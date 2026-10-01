@@ -34,3 +34,38 @@ jobs:
           python3 tests/gambatte_integration.py
           build/pokemon_gambatte_libretro.so
           build/gambatte-source/gambatte_libretro.so
+
+  h700:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/loveretro/h700-toolchain:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure with NextUI H700 toolchain
+        run: >-
+          cmake -S . -B build-h700
+          -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE"
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_FLAGS=-mcpu=cortex-a53
+          -DBUILD_TESTING=OFF
+
+      - name: Build H700 proxy
+        run: cmake --build build-h700 --parallel 2
+
+      - name: Verify 64-bit AArch64 shared library
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+          data = Path('build-h700/pokemon_gambatte_libretro.so').read_bytes()
+          assert data[:6] == b'\x7fELF\x02\x01', 'Expected ELF64 little-endian'
+          assert struct.unpack_from('<HH', data, 16) == (3, 183), 'Expected AArch64 shared object'
+          PY
+
+      - name: Upload H700 M0 test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: battlehud-h700-m0
+          path: build-h700/pokemon_gambatte_libretro.so
+          if-no-files-found: error
