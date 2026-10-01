@@ -1,0 +1,26 @@
+# libretro-battlehud
+
+A portable battle HUD for emulated Pokémon games, implemented as a **Libretro proxy core**.
+
+The first MVP targets Pokémon Crystal on GB/GBC with Gambatte and displays the active opponent's type(s) by reading emulated memory and compositing a small HUD into the core's software video frame.
+
+## Design goals
+
+- Frontend-independent: NextUI/MinArch first, RetroArch as a portability check
+- No NextUI or RetroArch fork
+- No process-memory hacks or root privileges
+- Read-only game-state access
+- Game/revision-specific memory data isolated in profiles
+- Architecture ready for later DV/IV/EV support
+
+## Initial milestones
+
+- **M0:** transparent Libretro proxy around Gambatte
+- **M1:** intercept software video frames without breaking emulation
+- **M2:** expose a normalized read-only emulated-memory interface
+- **M3:** decode Pokémon Crystal battle state and opponent types
+- **M4:** render the type HUD
+- **M5:** package and validate on NextUI
+- **M6:** validate the same wrapper under RetroArch
+
+Development starts on a feature branch and will keep the wrapper transparent before adding Pokémon-specific behavior.
