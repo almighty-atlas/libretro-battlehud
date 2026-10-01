@@ -9,6 +9,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef unsigned (*retro_api_version_fn)(void);
+typedef void (*retro_set_environment_fn)(retro_environment_t);
+typedef void (*retro_set_video_refresh_fn)(retro_video_refresh_t);
+typedef void (*retro_set_audio_sample_batch_fn)(retro_audio_sample_batch_t);
+typedef void (*retro_set_input_poll_fn)(retro_input_poll_t);
+typedef void (*retro_set_input_state_fn)(retro_input_state_t);
+typedef void (*retro_get_system_info_fn)(struct retro_system_info *);
+typedef void (*retro_init_fn)(void);
+typedef bool (*retro_load_game_fn)(const struct retro_game_info *);
+typedef void (*retro_run_fn)(void);
+typedef size_t (*retro_serialize_size_fn)(void);
+typedef bool (*retro_serialize_fn)(void *, size_t);
+typedef bool (*retro_unserialize_fn)(const void *, size_t);
+typedef void *(*retro_get_memory_data_fn)(unsigned);
+typedef size_t (*retro_get_memory_size_fn)(unsigned);
+typedef void (*retro_unload_game_fn)(void);
+typedef void (*retro_deinit_fn)(void);
+
 static int environment_calls;
 static int video_calls;
 static int audio_calls;
@@ -74,11 +92,11 @@ static void *required_symbol(void *handle, const char *name)
     return symbol;
 }
 
-#define RESOLVE(name, type)                                                    \
-    type name;                                                                 \
+#define RESOLVE(variable, type, symbol_name)                                   \
+    type variable = NULL;                                                      \
     do {                                                                       \
-        void *symbol__ = required_symbol(wrapper, #name);                      \
-        memcpy(&name, &symbol__, sizeof(symbol__));                            \
+        void *symbol__ = required_symbol(wrapper, symbol_name);                \
+        memcpy(&variable, &symbol__, sizeof(symbol__));                        \
     } while (0)
 
 int main(int argc, char **argv)
@@ -106,53 +124,53 @@ int main(int argc, char **argv)
         return 4;
     }
 
-    RESOLVE(retro_api_version, unsigned (*)(void));
-    RESOLVE(retro_set_environment, void (*)(retro_environment_t));
-    RESOLVE(retro_set_video_refresh, void (*)(retro_video_refresh_t));
-    RESOLVE(retro_set_audio_sample_batch, void (*)(retro_audio_sample_batch_t));
-    RESOLVE(retro_set_input_poll, void (*)(retro_input_poll_t));
-    RESOLVE(retro_set_input_state, void (*)(retro_input_state_t));
-    RESOLVE(retro_get_system_info, void (*)(struct retro_system_info *));
-    RESOLVE(retro_init, void (*)(void));
-    RESOLVE(retro_load_game, bool (*)(const struct retro_game_info *));
-    RESOLVE(retro_run, void (*)(void));
-    RESOLVE(retro_serialize_size, size_t (*)(void));
-    RESOLVE(retro_serialize, bool (*)(void *, size_t));
-    RESOLVE(retro_unserialize, bool (*)(const void *, size_t));
-    RESOLVE(retro_get_memory_data, void *(*)(unsigned));
-    RESOLVE(retro_get_memory_size, size_t (*)(unsigned));
-    RESOLVE(retro_unload_game, void (*)(void));
-    RESOLVE(retro_deinit, void (*)(void));
+    RESOLVE(api_version, retro_api_version_fn, "retro_api_version");
+    RESOLVE(set_environment, retro_set_environment_fn, "retro_set_environment");
+    RESOLVE(set_video_refresh, retro_set_video_refresh_fn, "retro_set_video_refresh");
+    RESOLVE(set_audio_sample_batch, retro_set_audio_sample_batch_fn, "retro_set_audio_sample_batch");
+    RESOLVE(set_input_poll, retro_set_input_poll_fn, "retro_set_input_poll");
+    RESOLVE(set_input_state, retro_set_input_state_fn, "retro_set_input_state");
+    RESOLVE(get_system_info, retro_get_system_info_fn, "retro_get_system_info");
+    RESOLVE(core_init, retro_init_fn, "retro_init");
+    RESOLVE(load_game, retro_load_game_fn, "retro_load_game");
+    RESOLVE(run, retro_run_fn, "retro_run");
+    RESOLVE(serialize_size, retro_serialize_size_fn, "retro_serialize_size");
+    RESOLVE(serialize, retro_serialize_fn, "retro_serialize");
+    RESOLVE(unserialize, retro_unserialize_fn, "retro_unserialize");
+    RESOLVE(get_memory_data, retro_get_memory_data_fn, "retro_get_memory_data");
+    RESOLVE(get_memory_size, retro_get_memory_size_fn, "retro_get_memory_size");
+    RESOLVE(unload_game, retro_unload_game_fn, "retro_unload_game");
+    RESOLVE(core_deinit, retro_deinit_fn, "retro_deinit");
 
-    if (retro_api_version() != RETRO_API_VERSION) {
+    if (api_version() != RETRO_API_VERSION) {
         fprintf(stderr, "API version was not forwarded\n");
         return 30;
     }
 
-    retro_set_environment(frontend_environment);
-    retro_set_video_refresh(frontend_video);
-    retro_set_audio_sample_batch(frontend_audio_batch);
-    retro_set_input_poll(frontend_input_poll);
-    retro_set_input_state(frontend_input_state);
+    set_environment(frontend_environment);
+    set_video_refresh(frontend_video);
+    set_audio_sample_batch(frontend_audio_batch);
+    set_input_poll(frontend_input_poll);
+    set_input_state(frontend_input_state);
 
     memset(&info, 0, sizeof(info));
-    retro_get_system_info(&info);
+    get_system_info(&info);
     if (!info.library_name ||
         strcmp(info.library_name, "BattleHUD Fake Backend") != 0) {
         fprintf(stderr, "system info was not forwarded\n");
         return 31;
     }
 
-    retro_init();
+    core_init();
 
     game.data = &rom_byte;
     game.size = 1;
-    if (!retro_load_game(&game)) {
+    if (!load_game(&game)) {
         fprintf(stderr, "load_game was not forwarded\n");
         return 32;
     }
 
-    retro_run();
+    run();
 
     if (environment_calls < 1 || video_calls != 1 || audio_calls != 1 ||
         input_poll_calls != 1 || input_state_calls != 1) {
@@ -163,32 +181,32 @@ int main(int argc, char **argv)
         return 33;
     }
 
-    if (retro_serialize_size() != 4 ||
-        !retro_serialize(serialized, sizeof(serialized)) ||
+    if (serialize_size() != 4 ||
+        !serialize(serialized, sizeof(serialized)) ||
         memcmp(serialized, "M0OK", 4) != 0 ||
-        !retro_unserialize(serialized, sizeof(serialized))) {
+        !unserialize(serialized, sizeof(serialized))) {
         fprintf(stderr, "serialization was not forwarded\n");
         return 34;
     }
 
-    if (retro_get_memory_size(RETRO_MEMORY_SAVE_RAM) != 8192) {
+    if (get_memory_size(RETRO_MEMORY_SAVE_RAM) != 8192) {
         fprintf(stderr, "save RAM size was not forwarded\n");
         return 35;
     }
 
-    save_ram = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
+    save_ram = get_memory_data(RETRO_MEMORY_SAVE_RAM);
     if (!save_ram) {
         fprintf(stderr, "save RAM pointer was not forwarded\n");
         return 36;
     }
     save_ram[0] = 0x42;
-    if (((uint8_t *)retro_get_memory_data(RETRO_MEMORY_SAVE_RAM))[0] != 0x42) {
+    if (((uint8_t *)get_memory_data(RETRO_MEMORY_SAVE_RAM))[0] != 0x42) {
         fprintf(stderr, "save RAM access was not transparent\n");
         return 37;
     }
 
-    retro_unload_game();
-    retro_deinit();
+    unload_game();
+    core_deinit();
     dlclose(wrapper);
 
     puts("M0 proxy smoke test passed");
