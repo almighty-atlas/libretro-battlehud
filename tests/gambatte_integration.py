@@ -145,7 +145,9 @@ def worker(core_path, directory):
     stats.update(video=video_hash.hexdigest(), audio=audio_hash.hexdigest(), state_size=state_size)
     core.retro_unload_game()
     core.retro_deinit()
-    print(json.dumps(stats, sort_keys=True))
+    # Native stdio may flush after Python output at process exit.
+    # Keep the machine-readable result separate from backend diagnostics.
+    (Path(directory) / "result.json").write_text(json.dumps(stats, sort_keys=True))
 
 
 def main():
@@ -161,7 +163,7 @@ def main():
                                  env=env, capture_output=True, text=True, timeout=60)
             if run.returncode:
                 raise RuntimeError(f"{core}: {run.stdout}\n{run.stderr}")
-            results.append(json.loads(run.stdout.strip().splitlines()[-1]))
+            results.append(json.loads((Path(directory) / "result.json").read_text()))
     assert results[0] == results[1], results
     print("Real Gambatte direct/proxy parity passed:", json.dumps(results[0], sort_keys=True))
 
