@@ -24,7 +24,7 @@ jobs:
         run: ctest --test-dir build-macos --output-on-failure
 
       - name: Verify native arm64 library
-        run: lipo -verify_arch arm64 build-macos/pokemon_gambatte_libretro.dylib
+        run: lipo build-macos/pokemon_gambatte_libretro.dylib -verify_arch arm64
 
       - name: Check out real Gambatte for macOS integration testing
         uses: actions/checkout@v4
