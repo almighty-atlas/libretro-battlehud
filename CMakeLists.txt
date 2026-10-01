@@ -37,7 +37,18 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 if(BUILD_TESTING)
     add_library(fake_backend SHARED tests/fake_backend.c)
     target_include_directories(fake_backend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    set_target_properties(fake_backend PROPERTIES PREFIX "")
+    set_target_properties(fake_backend PROPERTIES
+        PREFIX "" OUTPUT_NAME "gambatte_real_libretro")
+
+    add_library(fake_bad_api SHARED tests/fake_backend.c)
+    target_include_directories(fake_bad_api PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_compile_definitions(fake_bad_api PRIVATE FAKE_BAD_API)
+    set_target_properties(fake_bad_api PROPERTIES PREFIX "")
+
+    add_library(fake_incomplete SHARED tests/fake_backend.c)
+    target_include_directories(fake_incomplete PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_compile_definitions(fake_incomplete PRIVATE FAKE_MISSING_RUN)
+    set_target_properties(fake_incomplete PROPERTIES PREFIX "")
 
     add_executable(proxy_smoke_test tests/proxy_smoke_test.c)
     target_include_directories(proxy_smoke_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -49,4 +60,18 @@ if(BUILD_TESTING)
             $<TARGET_FILE:pokemon_gambatte_libretro>
             $<TARGET_FILE:fake_backend>
     )
+    foreach(mode adjacent recovery)
+        add_test(NAME proxy_${mode} COMMAND proxy_smoke_test
+            $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_backend> ${mode})
+    endforeach()
+    add_test(NAME proxy_missing_backend COMMAND proxy_smoke_test
+        $<TARGET_FILE:pokemon_gambatte_libretro> /nonexistent/battlehud-backend.so failure)
+    add_test(NAME proxy_self_backend COMMAND proxy_smoke_test
+        $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:pokemon_gambatte_libretro> failure)
+    add_test(NAME proxy_bad_api COMMAND proxy_smoke_test
+        $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_bad_api> failure)
+    add_test(NAME proxy_missing_symbol COMMAND proxy_smoke_test
+        $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_incomplete> failure)
+    set_tests_properties(proxy_smoke proxy_adjacent proxy_recovery proxy_missing_backend
+        proxy_self_backend proxy_bad_api proxy_missing_symbol PROPERTIES TIMEOUT 10)
 endif()

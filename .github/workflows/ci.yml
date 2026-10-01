@@ -18,3 +18,19 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Check out real Gambatte for integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: libretro/gambatte-libretro
+          ref: d9d6cd06382d1ced30de34d56d3609452323dab1
+          path: build/gambatte-source
+
+      - name: Build real Gambatte
+        run: make -C build/gambatte-source -j2 platform=unix
+
+      - name: Compare direct Gambatte and proxy using original test ROM
+        run: >-
+          python3 tests/gambatte_integration.py
+          build/pokemon_gambatte_libretro.so
+          build/gambatte-source/gambatte_libretro.so

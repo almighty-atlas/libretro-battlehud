@@ -24,3 +24,21 @@ The first MVP targets Pokémon Crystal on GB/GBC with Gambatte and displays the 
 - **M6:** validate the same wrapper under RetroArch
 
 Development starts on a feature branch and will keep the wrapper transparent before adding Pokémon-specific behavior.
+
+## Current status and development
+
+PR #1 implements M0 only: transparent callback/API forwarding and backend loading.
+Pokémon decoding and HUD rendering are not implemented yet.
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+export LIBRETRO_BATTLEHUD_BACKEND=/absolute/path/to/gambatte_libretro.so
+```
+
+Load `build/pokemon_gambatte_libretro.so` as the core in a Libretro frontend.
+Keep test saves separate from your normal saves until device validation is complete.
+
+See [proxy contract and validation](docs/libretro-proxy.md) and
+[NextUI integration findings](docs/nextui-analysis.md).

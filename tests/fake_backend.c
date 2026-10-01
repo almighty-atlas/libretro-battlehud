@@ -12,16 +12,24 @@ static retro_audio_sample_batch_t audio_batch_cb;
 static retro_input_poll_t input_poll_cb;
 static retro_input_state_t input_state_cb;
 
-static uint32_t frame[160 * 144];
+static uint32_t frame[164 * 144];
+static unsigned runs;
 static uint8_t save_ram[8192];
 
 unsigned retro_api_version(void)
 {
+#ifdef FAKE_BAD_API
+    return RETRO_API_VERSION + 1;
+#else
     return RETRO_API_VERSION;
+#endif
 }
 
 void retro_init(void)
 {
+    runs = 0;
+    memset(frame, 0x5a, sizeof(frame));
+    save_ram[2] = 0xff;
     enum retro_pixel_format format = RETRO_PIXEL_FORMAT_XRGB8888;
     if (environment_cb)
         environment_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format);
@@ -66,6 +74,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 
 void retro_reset(void) {}
 
+#ifndef FAKE_MISSING_RUN
 void retro_run(void)
 {
     static const int16_t audio[2] = {0, 0};
@@ -74,16 +83,18 @@ void retro_run(void)
         input_poll_cb();
 
     if (input_state_cb)
-        (void)input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
+        save_ram[1] = (uint8_t)input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
 
     if (video_cb)
-        video_cb(frame, 160, 144, 160 * sizeof(uint32_t));
+        video_cb(runs++ % 2 ? NULL : frame, 160, 144, 164 * sizeof(uint32_t));
 
     if (audio_batch_cb)
-        audio_batch_cb(audio, 1);
+        save_ram[2] = (uint8_t)audio_batch_cb(audio, 1);
     else if (audio_cb)
-        audio_cb(0, 0);
+        audio_cb(-123, 456);
 }
+
+#endif
 
 size_t retro_serialize_size(void) { return 4; }
 

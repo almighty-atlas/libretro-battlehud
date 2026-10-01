@@ -57,6 +57,12 @@ struct backend_api {
 
 static struct backend_api backend;
 static int proxy_anchor;
+/* Remember only setters actually called by the frontend, including NULL. */
+static unsigned callback_mask;
+enum {
+    CB_ENV = 1, CB_VIDEO = 2, CB_AUDIO = 4,
+    CB_BATCH = 8, CB_POLL = 16, CB_STATE = 32
+};
 
 static retro_environment_t frontend_environment;
 static retro_video_refresh_t frontend_video_refresh;
@@ -191,6 +197,20 @@ static bool load_backend(void)
     }
 
     LOAD_BACKEND_SYMBOL(api_version, "retro_api_version");
+    {
+        Dl_info wrapper_info, backend_info;
+        void *symbol = dlsym(backend.handle, "retro_api_version");
+        if (!dladdr(&proxy_anchor, &wrapper_info) ||
+            !dladdr(symbol, &backend_info) ||
+            wrapper_info.dli_fbase == backend_info.dli_fbase) {
+            fprintf(stderr, "libretro-battlehud: backend resolves to the proxy itself\n");
+            goto fail;
+        }
+    }
+    if (backend.api_version() != RETRO_API_VERSION) {
+        fprintf(stderr, "libretro-battlehud: incompatible backend API version\n");
+        goto fail;
+    }
     LOAD_BACKEND_SYMBOL(init, "retro_init");
     LOAD_BACKEND_SYMBOL(deinit, "retro_deinit");
     LOAD_BACKEND_SYMBOL(set_environment, "retro_set_environment");
@@ -216,6 +236,19 @@ static bool load_backend(void)
     LOAD_BACKEND_SYMBOL(get_memory_data, "retro_get_memory_data");
     LOAD_BACKEND_SYMBOL(get_memory_size, "retro_get_memory_size");
 
+    /* A previous load may have failed before frontend setup completed. */
+    if (callback_mask & CB_ENV)
+        backend.set_environment(frontend_environment ? proxy_environment : NULL);
+    if (callback_mask & CB_VIDEO)
+        backend.set_video_refresh(frontend_video_refresh ? proxy_video_refresh : NULL);
+    if (callback_mask & CB_AUDIO)
+        backend.set_audio_sample(frontend_audio_sample ? proxy_audio_sample : NULL);
+    if (callback_mask & CB_BATCH)
+        backend.set_audio_sample_batch(frontend_audio_sample_batch ? proxy_audio_sample_batch : NULL);
+    if (callback_mask & CB_POLL)
+        backend.set_input_poll(frontend_input_poll ? proxy_input_poll : NULL);
+    if (callback_mask & CB_STATE)
+        backend.set_input_state(frontend_input_state ? proxy_input_state : NULL);
     return true;
 
 fail:
@@ -239,50 +272,72 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
-    if (load_backend())
+    /* Teardown must not load a core that never became available. */
+    if (backend.handle) {
         backend.deinit();
+        dlclose(backend.handle);
+        memset(&backend, 0, sizeof(backend));
+    }
 }
 
 void retro_set_environment(retro_environment_t cb)
 {
     frontend_environment = cb;
-    if (load_backend())
-        backend.set_environment(proxy_environment);
+    callback_mask |= CB_ENV;
+    if (backend.handle)
+        backend.set_environment(cb ? proxy_environment : NULL);
+    else
+        (void)load_backend();
 }
 
 void retro_set_video_refresh(retro_video_refresh_t cb)
 {
     frontend_video_refresh = cb;
-    if (load_backend())
-        backend.set_video_refresh(proxy_video_refresh);
+    callback_mask |= CB_VIDEO;
+    if (backend.handle)
+        backend.set_video_refresh(cb ? proxy_video_refresh : NULL);
+    else
+        (void)load_backend();
 }
 
 void retro_set_audio_sample(retro_audio_sample_t cb)
 {
     frontend_audio_sample = cb;
-    if (load_backend())
-        backend.set_audio_sample(proxy_audio_sample);
+    callback_mask |= CB_AUDIO;
+    if (backend.handle)
+        backend.set_audio_sample(cb ? proxy_audio_sample : NULL);
+    else
+        (void)load_backend();
 }
 
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb)
 {
     frontend_audio_sample_batch = cb;
-    if (load_backend())
-        backend.set_audio_sample_batch(proxy_audio_sample_batch);
+    callback_mask |= CB_BATCH;
+    if (backend.handle)
+        backend.set_audio_sample_batch(cb ? proxy_audio_sample_batch : NULL);
+    else
+        (void)load_backend();
 }
 
 void retro_set_input_poll(retro_input_poll_t cb)
 {
     frontend_input_poll = cb;
-    if (load_backend())
-        backend.set_input_poll(proxy_input_poll);
+    callback_mask |= CB_POLL;
+    if (backend.handle)
+        backend.set_input_poll(cb ? proxy_input_poll : NULL);
+    else
+        (void)load_backend();
 }
 
 void retro_set_input_state(retro_input_state_t cb)
 {
     frontend_input_state = cb;
-    if (load_backend())
-        backend.set_input_state(proxy_input_state);
+    callback_mask |= CB_STATE;
+    if (backend.handle)
+        backend.set_input_state(cb ? proxy_input_state : NULL);
+    else
+        (void)load_backend();
 }
 
 void retro_get_system_info(struct retro_system_info *info)

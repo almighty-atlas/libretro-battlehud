@@ -56,11 +56,29 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-The test suite uses a fake Libretro backend and does not require ROMs or Gambatte.
+The CTest suite uses a fake Libretro backend and does not require ROMs or Gambatte.
+It covers ordinary and adjacent-file loading, recovery after a missing backend,
+missing symbols, incompatible API versions, and accidental self-loading. It also
+checks padded frame bytes, NULL duplicate frames, input return values, audio
+backpressure, callback removal, SRAM, save states, and retained-wrapper reinitialization.
+
+CI additionally builds real Gambatte at pinned commit
+`d9d6cd06382d1ced30de34d56d3609452323dab1` and compares direct execution with execution
+through the wrapper for 120 frames. The integration test creates an original 32 KiB
+GB test program; no commercial ROM or BIOS is downloaded. Visible video, audio,
+input polls, SRAM and serialization size must match, and each core must restore SRAM
+from a save state. Run it locally with an already built backend:
+
+```sh
+python3 tests/gambatte_integration.py build/pokemon_gambatte_libretro.so /absolute/path/to/gambatte_libretro.so
+```
+
+This headless check does not validate audible playback, physical controls, frontend
+menus or device suspend/resume. See [NextUI analysis](nextui-analysis.md).
 
 ## M0 exit criteria
 
-Before M1, validate with real Gambatte that:
+Before M1, validate with real Gambatte in the target frontend that:
 
 - a GB/GBC ROM starts
 - video, audio and input work
@@ -70,3 +88,14 @@ Before M1, validate with real Gambatte that:
 - shutdown is clean
 
 No Pokémon-specific code belongs in M0.
+
+## Loading and teardown behavior
+
+The proxy rejects itself as a backend, requires all standard entry points and API
+version 1, and returns safe empty/false results on load failure. It retains frontend
+callback registrations so a later successful load or a reinitialization can replay
+them. A NULL callback stays NULL at the backend. `retro_deinit` closes an already
+loaded backend and does not attempt to load an unavailable backend during teardown.
+
+The current loader targets POSIX shared libraries and defaults to Linux's `.so`
+filename. Windows support and hardware-rendering backends are not validated.
