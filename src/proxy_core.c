@@ -15,7 +15,11 @@
 #endif
 
 #ifndef BATTLEHUD_BACKEND_BASENAME
+#ifdef __APPLE__
+#define BATTLEHUD_BACKEND_BASENAME "gambatte_real_libretro.dylib"
+#else
 #define BATTLEHUD_BACKEND_BASENAME "gambatte_real_libretro.so"
+#endif
 #endif
 
 struct backend_api {

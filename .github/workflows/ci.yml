@@ -5,6 +5,50 @@ on:
   pull_request:
 
 jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure native Apple Silicon build
+        run: >-
+          cmake -S . -B build-macos
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_ARCHITECTURES=arm64
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+
+      - name: Build macOS proxy
+        run: cmake --build build-macos --parallel 3
+
+      - name: Test macOS proxy
+        run: ctest --test-dir build-macos --output-on-failure
+
+      - name: Verify native arm64 library
+        run: lipo -verify_arch arm64 build-macos/pokemon_gambatte_libretro.dylib
+
+      - name: Check out real Gambatte for macOS integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: libretro/gambatte-libretro
+          ref: d9d6cd06382d1ced30de34d56d3609452323dab1
+          path: build-macos/gambatte-source
+
+      - name: Build native macOS Gambatte
+        run: make -C build-macos/gambatte-source -j3 platform=osx CC=clang CXX=clang++ ARCHFLAGS="-arch arm64"
+
+      - name: Compare direct macOS Gambatte and proxy
+        run: >-
+          python3 tests/gambatte_integration.py
+          build-macos/pokemon_gambatte_libretro.dylib
+          build-macos/gambatte-source/gambatte_libretro.dylib
+
+      - name: Upload macOS M0 test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: battlehud-macos-arm64-m0
+          path: build-macos/pokemon_gambatte_libretro.dylib
+          if-no-files-found: error
+
   linux:
     runs-on: ubuntu-latest
     steps:

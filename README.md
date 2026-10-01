@@ -42,3 +42,4 @@ Keep test saves separate from your normal saves until device validation is compl
 
 See [proxy contract and validation](docs/libretro-proxy.md) and
 [NextUI integration findings](docs/nextui-analysis.md).
+For an Apple Silicon desktop test, see [macOS setup](docs/macos-test.md).

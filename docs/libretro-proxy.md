@@ -43,7 +43,8 @@ export LIBRETRO_BATTLEHUD_BACKEND=/absolute/path/to/gambatte_libretro.so
 If unset, the wrapper looks beside itself for:
 
 ```text
-gambatte_real_libretro.so
+gambatte_real_libretro.so  # Linux
+gambatte_real_libretro.dylib  # macOS
 ```
 
 This adjacent-file fallback is intended for later self-contained NextUI packaging.
@@ -97,5 +98,6 @@ callback registrations so a later successful load or a reinitialization can repl
 them. A NULL callback stays NULL at the backend. `retro_deinit` closes an already
 loaded backend and does not attempt to load an unavailable backend during teardown.
 
-The current loader targets POSIX shared libraries and defaults to Linux's `.so`
-filename. Windows support and hardware-rendering backends are not validated.
+The loader targets POSIX shared libraries with `.so` on Linux and `.dylib` on
+macOS. See [Apple Silicon testing](macos-test.md) for a desktop M0 check. Windows
+support and hardware-rendering backends are not validated.
