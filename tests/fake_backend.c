@@ -122,7 +122,15 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
-    return game != NULL;
+    if (!game)
+        return false;
+    /* Stack descriptors deliberately expire when this call returns. */
+    struct retro_memory_descriptor d = {0, save_ram, 0, 0xA000,
+                                        (size_t)~0x1FFF, 0, sizeof(save_ram), NULL};
+    struct retro_memory_map map = {&d, 1};
+    if (environment_cb)
+        environment_cb(RETRO_ENVIRONMENT_SET_MEMORY_MAPS, &map);
+    return true;
 }
 
 bool retro_load_game_special(unsigned game_type,

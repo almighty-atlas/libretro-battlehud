@@ -38,5 +38,40 @@ CI checks renderer behavior and fake-backend integration, plus real Gambatte wit
 the marker enabled: every visible marked frame must contain the white rectangle;
 video outside it, audio, SRAM and save-state behavior must match direct Gambatte.
 
-Interactive M1 acceptance remains pending: the user must see the rectangle while
-Crystal runs normally on the Mac. H700 validation remains pending as well.
+Interactive M1 acceptance passed (user reported) on 2026-10-02 using commit
+`7c0a1844f8e60f8552d9a5df1318af2f25892b13`: the user confirmed the white square
+is visible in the running Crystal session on the same Apple M4 MacBook.
+H700 validation remains pending.
+
+
+## M2 read-only memory adapter
+
+The wrapper captures `RETRO_ENVIRONMENT_SET_MEMORY_MAPS` independently of frontend
+support, copies descriptors and address-space labels, and borrows only the core's
+session-valid data pointers. CPU reads use an explicit address mapping; raw
+`retro_get_memory_data` fallback uses memory ID plus region offset, with no guessed
+CPU base address. Neither API exposes a mutable pointer to the decoder.
+
+The initial adapter supports bounded, linear mappings with `disconnect == 0` in
+the unnamed CPU address space, including Gambatte's $C000/$D000 RAM windows and
+$FF80 zero page. Unsupported disconnected, implicit-length or mirrored addresses
+fail closed rather than returning speculative data. Named spaces are retained
+but unavailable through the CPU read API. This is deliberately not a general
+Libretro bank/mirror normalizer. Limits are 256 descriptors and 1 MiB per read.
+
+`battlehud_read_memory(address, destination, size)` and
+`battlehud_read_region(id, offset, destination, size)` return false on unmapped,
+unsupported, overflowing or out-of-range reads, leaving the destination unchanged.
+Call on the emulation thread between frames. The caller must supply a writable,
+non-overlapping destination buffer. Game load, failed load, unload and deinit
+invalidate prior mappings; new announcements replace them. Backend pointers must
+remain valid for the session as required by Libretro's descriptor contract.
+
+Unit tests cover descriptor copying, offsets, selection masks, first-descriptor
+precedence, crossing boundaries, unmapped/named spaces, unsupported mappings,
+overflows and unchanged source/destination on failures. Fake-backend tests cover
+frontend rejection and lifecycle invalidation. Real-Gambatte parity tests use an
+original ROM writing $6D to CPU $C123; the normalized read is compared with the
+backend SYSTEM_RAM byte at offset $123. SRAM, save-state restore, audio and video
+parity are checked alongside it. No commercial ROM or Pokémon RAM decoding is
+needed for this test. Crystal profile recognition and battle decoding remain M3.

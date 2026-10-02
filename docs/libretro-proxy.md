@@ -30,7 +30,10 @@ These callbacks are transparently forwarded:
 - input poll
 - input state
 
-M1 will modify only the video path. M2 will begin observing memory-map information in the environment path.
+M1 optionally modifies the video path. M2 captures memory maps in the environment
+path and acknowledges valid captures even when the frontend declines them. Other
+environment commands retain their original return values. See
+[adapter scope and validation](validation.md#m2-read-only-memory-adapter).
 
 ## Backend discovery
 

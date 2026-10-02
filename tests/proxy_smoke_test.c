@@ -28,6 +28,8 @@ typedef size_t (*retro_get_memory_size_fn)(unsigned);
 typedef void (*retro_unload_game_fn)(void);
 typedef void (*retro_deinit_fn)(void);
 
+typedef bool (*read_memory_fn)(size_t, void *, size_t);
+typedef bool (*read_region_fn)(unsigned, size_t, void *, size_t);
 static int environment_calls;
 static int video_calls;
 static int audio_calls;
@@ -45,7 +47,8 @@ static bool frontend_environment(unsigned cmd, void *data)
     }
 
     environment_calls++;
-    return true;
+    /* Wrapper memory capture must work when the frontend does not support maps. */
+    return cmd != RETRO_ENVIRONMENT_SET_MEMORY_MAPS;
 }
 
 static void frontend_video(const void *data, unsigned width,
@@ -165,6 +168,11 @@ int main(int argc, char **argv)
         return 4;
     }
 
+    RESOLVE(read_memory, read_memory_fn, "battlehud_read_memory");
+    RESOLVE(read_region, read_region_fn, "battlehud_read_region");
+    uint8_t probe[2] = {0xaa,0xbb};
+    if (read_memory(0xA001,probe,1) || read_region(0,0,probe,1))
+        return 48;
     RESOLVE(api_version, retro_api_version_fn, "retro_api_version");
     RESOLVE(set_environment, retro_set_environment_fn, "retro_set_environment");
     RESOLVE(set_video_refresh, retro_set_video_refresh_fn, "retro_set_video_refresh");
@@ -259,6 +267,13 @@ int main(int argc, char **argv)
         fprintf(stderr, "save RAM pointer was not forwarded\n");
         return 36;
     }
+    if (!read_memory(0xA001,probe,2) || probe[0] != 7 || probe[1] != 0 ||
+        !read_region(RETRO_MEMORY_SAVE_RAM,1,probe,2) || probe[0] != 7 || probe[1] != 0)
+        return 49;
+    probe[0] = 0xaa; probe[1] = 0xbb;
+    if (read_memory(0xBFFF,probe,2) || read_region(0,8191,probe,2) ||
+        probe[0] != 0xaa || probe[1] != 0xbb)
+        return 50;
     if (save_ram[1] != 7 || save_ram[2] != 0)
         return 41; /* Input return value reached the backend. */
     set_audio_sample(frontend_audio_sample);
@@ -281,6 +296,10 @@ int main(int argc, char **argv)
     }
 
     unload_game();
+    if (read_memory(0xA001,probe,1) || read_region(0,0,probe,1))
+        return 51;
+    if (load_game(NULL) || read_memory(0xA001,probe,1))
+        return 52;
     core_deinit();
     /* The frontend can retain the wrapper, but the backend must be released. */
     if (strcmp(mode, "adjacent")) {

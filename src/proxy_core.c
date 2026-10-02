@@ -2,6 +2,7 @@
 
 #include "libretro.h"
 #include "video_marker.h"
+#include "memory_view.h"
 
 #include <dlfcn.h>
 #include <limits.h>
@@ -76,15 +77,19 @@ static retro_audio_sample_batch_t frontend_audio_sample_batch;
 static retro_input_poll_t frontend_input_poll;
 static retro_input_state_t frontend_input_state;
 static struct video_marker marker;
+static struct memory_view memory;
+static bool game_loaded;
 static bool marker_enabled;
 static enum retro_pixel_format pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 
 static bool proxy_environment(unsigned cmd, void *data)
 {
+    bool captured = cmd == RETRO_ENVIRONMENT_SET_MEMORY_MAPS &&
+        memory_view_capture(&memory, data);
     bool accepted = frontend_environment ? frontend_environment(cmd, data) : false;
     if (accepted && data && cmd == RETRO_ENVIRONMENT_SET_PIXEL_FORMAT)
         pixel_format = *(const enum retro_pixel_format *)data;
-    return accepted;
+    return accepted || captured;
 }
 
 static void proxy_video_refresh(const void *data, unsigned width,
@@ -282,6 +287,8 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
+    game_loaded = false;
+    memory_view_clear(&memory);
     /* Teardown must not load a core that never became available. */
     if (backend.handle) {
         backend.deinit();
@@ -429,19 +436,31 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
 
 bool retro_load_game(const struct retro_game_info *game)
 {
-    return load_backend() && backend.load_game(game);
+    game_loaded = false;
+    memory_view_clear(&memory);
+    game_loaded = load_backend() && backend.load_game(game);
+    if (!game_loaded)
+        memory_view_clear(&memory);
+    return game_loaded;
 }
 
 bool retro_load_game_special(unsigned game_type,
                              const struct retro_game_info *info,
                              size_t num_info)
 {
-    return load_backend() &&
+    game_loaded = false;
+    memory_view_clear(&memory);
+    game_loaded = load_backend() &&
         backend.load_game_special(game_type, info, num_info);
+    if (!game_loaded)
+        memory_view_clear(&memory);
+    return game_loaded;
 }
 
 void retro_unload_game(void)
 {
+    game_loaded = false;
+    memory_view_clear(&memory);
     if (load_backend())
         backend.unload_game();
 }
@@ -459,4 +478,26 @@ void *retro_get_memory_data(unsigned id)
 size_t retro_get_memory_size(unsigned id)
 {
     return load_backend() ? backend.get_memory_size(id) : 0;
+}
+
+/* Read-only wrapper extensions for the future decoder and validation hosts.
+ * Calls must run on the emulation thread, between retro_run calls.
+ * No CPU-address assumption is made for raw Libretro memory regions. */
+bool battlehud_read_memory(size_t address, void *out, size_t size)
+{
+    return game_loaded && memory_view_read(&memory, address, out, size);
+}
+
+bool battlehud_read_region(unsigned id, size_t offset, void *out, size_t size)
+{
+    if (!game_loaded || !backend.handle || !out || !size || size > 1024 * 1024)
+        return false;
+    size_t length = backend.get_memory_size(id);
+    const unsigned char *data = backend.get_memory_data(id);
+    if (!data || offset > length || size > length - offset ||
+        (uintptr_t)data > UINTPTR_MAX - offset ||
+        (uintptr_t)data + offset > UINTPTR_MAX - (size - 1))
+        return false;
+    memcpy(out, data + offset, size);
+    return true;
 }

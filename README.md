@@ -27,9 +27,10 @@ Development starts on a feature branch and will keep the wrapper transparent bef
 
 ## Current status and development
 
-PR #1 implements the M0 transparent proxy and the M1 opt-in video test marker.
+PR #1 implements the M0 transparent proxy, M1 opt-in video test marker and
+M2 read-only memory adapter for bounded Gambatte CPU mappings and raw regions.
 Pokémon decoding and the type HUD are not implemented yet.
-M0 has passed a user-reported interactive Mac test; see [validation status](docs/validation.md).
+M0 and M1 have passed user-reported interactive Mac tests; see [validation status](docs/validation.md).
 
 Set `LIBRETRO_BATTLEHUD_TEST_MARKER=1` when launching the frontend for an 8×8 white
 rectangle at the top right. Without it, video remains transparent.

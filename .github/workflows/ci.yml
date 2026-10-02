@@ -48,10 +48,10 @@ jobs:
           build-macos/pokemon_gambatte_libretro.dylib
           build-macos/gambatte-source/gambatte_libretro.dylib --marker
 
-      - name: Upload macOS M0 test build
+      - name: Upload macOS test build
         uses: actions/upload-artifact@v4
         with:
-          name: battlehud-macos-arm64-m1
+          name: battlehud-macos-arm64-m2
           path: build-macos/pokemon_gambatte_libretro.dylib
           if-no-files-found: error
 
@@ -119,9 +119,9 @@ jobs:
           assert struct.unpack_from('<HH', data, 16) == (3, 183), 'Expected AArch64 shared object'
           PY
 
-      - name: Upload H700 M0 test build
+      - name: Upload H700 test build
         uses: actions/upload-artifact@v4
         with:
-          name: battlehud-h700-m1
+          name: battlehud-h700-m2
           path: build-h700/pokemon_gambatte_libretro.so
           if-no-files-found: error

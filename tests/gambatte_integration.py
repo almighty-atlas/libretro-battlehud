@@ -116,8 +116,8 @@ def worker(core_path, directory):
     rom[0x100:0x103] = bytes.fromhex("c3 50 01")  # JP $0150
     rom[0x134:0x13f] = b"BATTLEHUD00"
     rom[0x147], rom[0x149] = 3, 2  # MBC1 + RAM + battery; 8 KiB SRAM.
-    # Enable SRAM, store $42, set palette/LCD, then loop. No commercial assets.
-    code = bytes.fromhex("3e 0a ea 00 00 3e 42 ea 00 a0 3e e4 ea 47 ff 3e 91 ea 40 ff 18 fe")
+    # Enable SRAM, store $42, write $6D to CPU RAM $C123, set LCD, then loop. No commercial assets.
+    code = bytes.fromhex("3e 0a ea 00 00 3e 42 ea 00 a0 3e 6d ea 23 c1 3e e4 ea 47 ff 3e 91 ea 40 ff 18 fe")
     rom[0x150:0x150 + len(code)] = code
     checksum = 0
     for byte in rom[0x134:0x14d]:
@@ -140,6 +140,27 @@ def worker(core_path, directory):
     assert size == 8192 and pointer, "SRAM missing"
     assert C.c_uint8.from_address(pointer).value == 0x42, "ROM did not execute"
     stats["sram"] = hashlib.sha256(C.string_at(pointer, size)).hexdigest()
+    # Independent reference: Gambatte's SYSTEM_RAM starts at its RAM bank 0.
+    # The wrapper must obtain CPU $C123 from SET_MEMORY_MAPS, even though our
+    # environment callback rejects that command. Region reads never guess bases.
+    ram = core.retro_get_memory_data(2)
+    assert ram and core.retro_get_memory_size(2) >= 0x124
+    reference = C.c_uint8.from_address(ram + 0x123).value
+    assert reference == 0x6d, "test ROM RAM write missing"
+    mapped_read = getattr(core, "battlehud_read_memory", None)
+    region_read = getattr(core, "battlehud_read_region", None)
+    if mapped_read:
+        mapped_read.argtypes, mapped_read.restype = [C.c_size_t, C.c_void_p, C.c_size_t], C.c_bool
+        region_read.argtypes, region_read.restype = [C.c_uint, C.c_size_t, C.c_void_p, C.c_size_t], C.c_bool
+        value = C.c_uint8(0)
+        assert mapped_read(0xc123, C.byref(value), 1) and value.value == reference
+        assert region_read(2, 0x123, C.byref(value), 1) and value.value == reference
+        assert mapped_read(0xa000, C.byref(value), 1) and value.value == 0x42
+        value.value = 0x99
+        assert not mapped_read(0xdeadbeef, C.byref(value), 1) and value.value == 0x99
+        assert not region_read(2, core.retro_get_memory_size(2), C.byref(value), 1)
+    stats["ram_probe"] = reference
+
     core.retro_serialize_size.restype = C.c_size_t
     state_size = core.retro_serialize_size()
     assert state_size > 0
@@ -152,8 +173,14 @@ def worker(core_path, directory):
     assert core.retro_unserialize(state, state_size)
     pointer = core.retro_get_memory_data(0)
     assert C.c_uint8.from_address(pointer).value == 0x42, "state did not restore SRAM"
+    if mapped_read:
+        assert mapped_read(0xc123, C.byref(value), 1) and value.value == reference
+        assert mapped_read(0xa000, C.byref(value), 1) and value.value == 0x42
     stats.update(video=video_hash.hexdigest(), audio=audio_hash.hexdigest(), state_size=state_size)
     core.retro_unload_game()
+    if mapped_read:
+        assert not mapped_read(0xc123, C.byref(value), 1)
+        assert not region_read(2, 0x123, C.byref(value), 1)
     core.retro_deinit()
     # Native stdio may flush after Python output at process exit.
     # Keep the machine-readable result separate from backend diagnostics.
