@@ -121,7 +121,9 @@ static void update_battle(void)
 {
     struct battle_state next = battle_decode(profile, decoder_read, NULL);
     if (debug_enabled && !battle_state_equal(&battle, &next)) {
-        if (next.status == BATTLE_ACTIVE)
+        if (next.status == BATTLE_ACTIVE && !next.main_menu)
+            fprintf(stderr, "battlehud: hidden (battle submenu)\n");
+        else if (next.status == BATTLE_ACTIVE)
             fprintf(stderr, "battlehud: %s species=%u types=%s%s%s raw=%02x/%02x\n",
                     next.mode == 1 ? "wild" : "trainer", (unsigned)next.species,
                     pokemon_type_name(next.type1), next.type2 ? "/" : "",

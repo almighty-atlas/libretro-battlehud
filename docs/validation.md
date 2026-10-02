@@ -116,7 +116,7 @@ NextUI/H700 and link/mobile/special battles remain unverified.
 ## M4 type badges — interactive acceptance pending
 
 The renderer draws one or two English type badges at the upper right for a valid
-active Crystal battle. It supports 0RGB1555, RGB565 and XRGB8888, samples the model
+active Crystal battle at the normal battle main menu. It supports 0RGB1555, RGB565 and XRGB8888, samples the model
 at the video callback and preserves the core's source buffer. Unknown games and
 `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` keep normal video forwarding.
 
@@ -133,3 +133,21 @@ badges, source preservation, model updates/removal on duplicates and buffer clea
 This is component integration; the synthetic ROM remains rejected by production
 profile selection. The actual automatic Crystal HUD still needs the user's Mac
 test for visibility, enemy changes, disappearance and save-state restoration.
+
+
+### M4 initial visual test and main-menu refinement
+
+On 2026-10-02 the user reported the M4 badges look good and supplied screenshots
+from commit `e4340834f25334735833b3a18bc8fd46b229302b`: Rattata showed NORMAL and
+Hoothoot showed NORMAL / FLYING. The screenshots also identify the backend as
+`Gambatte v0.5.0-netlink d9d6cd0`. The initial single/dual badge visibility and
+readability are confirmed; visual switch/end/restore acceptance remains pending.
+
+The user requested visibility **only at the battle main menu**, including hiding
+badges in the bag. The revised profile checks the live menu pointer/bank and all
+four rendered tile labels. Decoder tests cover a valid menu, mismatched pointers
+and banks, stale metadata, missing text/reads and the PKMN glyph expansion.
+Renderer tests cover submenu entry/return on duplicate frames while preserving
+the enemy model. Real-Gambatte synthetic fixture coverage includes the menu RAM
+and renderer removal when `main_menu` becomes false. Actual bag/party/move screen
+entry/return is pending the user's new Mac test.

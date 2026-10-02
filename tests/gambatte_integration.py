@@ -18,7 +18,7 @@ class Game(C.Structure):
 class BattleState(C.Structure):
     _fields_ = [("status", C.c_int), ("mode", C.c_uint8), ("species", C.c_uint16),
                 ("type1", C.c_int), ("type2", C.c_int),
-                ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8)]
+                ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8), ("main_menu", C.c_bool)]
 
 
 class TypeHud(C.Structure):
@@ -143,7 +143,12 @@ def worker(core_path, directory):
     # This original ROM remains unrecognized by the production profile gate.
     fixture = {0xc734: 0, 0xc711: 0, 0xd264: 0, 0xd22d: 1, 0xd206: 16,
                0xd213: 5, 0xd216: 0, 0xd217: 20, 0xd218: 0, 0xd219: 20,
-               0xd224: 0, 0xd225: 2}
+               0xd224: 0, 0xd225: 2,
+               0xcf86: 0x34, 0xcf87: 0x4f, 0xcf8a: 9,
+               0xc5c2: 0x85, 0xc5c3: 0x88, 0xc5c4: 0x86, 0xc5c5: 0x87, 0xc5c6: 0x93,
+               0xc5c8: 0xe1, 0xc5c9: 0xe2,
+               0xc5ea: 0x8f, 0xc5eb: 0x80, 0xc5ec: 0x82, 0xc5ed: 0x8a,
+               0xc5f0: 0x91, 0xc5f1: 0x94, 0xc5f2: 0x8d}
     writes = bytes.fromhex("3e 01 ea 70 ff")  # SVBK = 1
     for address, value in fixture.items():
         writes += bytes([0x3e, value, 0xea, address & 255, address >> 8])
@@ -207,6 +212,7 @@ def worker(core_path, directory):
         actual = [snapshot.status, snapshot.mode, snapshot.species, snapshot.type1,
                   snapshot.type2, snapshot.raw_type1, snapshot.raw_type2]
         assert actual == expected_battle, actual
+        assert snapshot.main_menu, "main-menu fixture not detected"
         # Component integration over actual emulator pixels and the decoded model.
         # Production profile gating intentionally still rejects this synthetic ROM.
         frame_buffer, width, height, pitch, fmt = captured_frame
@@ -233,7 +239,7 @@ def worker(core_path, directory):
         # Model change on a NULL duplicate must redraw; outside battle must erase.
         snapshot.type2 = 0
         assert draw(C.byref(hud), C.byref(snapshot), None, width, height, pitch, fmt)
-        snapshot.status = 1
+        snapshot.main_menu = False  # Active battle, submenu: badges must disappear.
         clean = draw(C.byref(hud), C.byref(snapshot), None, width, height, pitch, fmt)
         assert clean
         for y in range(height):

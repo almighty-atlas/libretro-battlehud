@@ -44,7 +44,7 @@ static void pixel(uint8_t *out, size_t pitch, size_t bpp, unsigned x, unsigned y
 static bool valid_type(enum pokemon_type type) { return type>=TYPE_NORMAL && type<=TYPE_FAIRY; }
 static bool fits(const struct battle_state *s, unsigned width, unsigned height)
 {
-    if(s->status!=BATTLE_ACTIVE || !s->species || !valid_type(s->type1) ||
+    if(s->status!=BATTLE_ACTIVE || !s->main_menu || !s->species || !valid_type(s->type1) ||
        (s->type2!=TYPE_NONE && !valid_type(s->type2))) return false;
     unsigned rows=s->type2!=TYPE_NONE && s->type2!=s->type1 ? 2 : 1;
     if(height < 2+rows*13+(rows-1)*2+2) return false;

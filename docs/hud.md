@@ -1,11 +1,13 @@
 # Type HUD (M4)
 
 Recognized Crystal Rev. 1 battles display one or two colored badges at the upper
-right of software frames. Labels use English type names in an original 5×7 bitmap
+right **only in the normal FIGHT / PKMN / PACK / RUN main menu**. Labels use English type names in an original 5×7 bitmap
 font, with a dark border and white text. Identical types produce one badge. The
 model is read at the core's video callback before composition, so the rendered
-state belongs to that frame. Outside battle and during invalid/unavailable or
-start/switch/faint transitions, no badges are drawn.
+state belongs to that frame. Outside battle, in bag/party/move submenus and action text, and during
+invalid/unavailable or start/switch/faint transitions, no badges are drawn.
+The profile checks the menu-data pointer/bank plus all four RAM tilemap labels;
+missing or mismatched data hides the badges without discarding the combatant.
 
 At 160×144 each badge is 13 pixels high, with two-pixel outer margins and a
 two-pixel row gap. Badge width follows label length (largest: 55 pixels). Smaller
@@ -40,7 +42,7 @@ Badges are enabled by default for the supported profile. Set
 There is no unsupported-ROM or profile override.
 
 Unit tests exercise all formats/type labels, exact pixels, source preservation,
-pixels outside badges, duplicate updates/removal, layout failures and cleanup.
+pixels outside badges, duplicate updates/removal, submenu visibility changes, layout failures and cleanup.
 Real-Gambatte component tests feed actual emulator pixels and the synthetic
 fixture's decoded model into the renderer, while the production ROM gate remains
 closed for that original test ROM. Actual Crystal HUD visibility, positioning,

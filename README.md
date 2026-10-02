@@ -29,7 +29,8 @@ Development starts on a feature branch and will keep the wrapper transparent bef
 
 PR #1 implements the M0 transparent proxy, M1 opt-in video test marker and
 M2 read-only memory adapter, M3 Crystal USA/Europe Rev. 1 battle decoder and
-M4 colored type badges. Valid active battles show one or two badges at the upper right.
+M4 colored type badges. Valid active battles show one or two badges at the upper right, only in the
+normal battle main menu; bag/party/move submenus hide them.
 Only SHA-1 `f2f52230b536214ef7c9924f483392993e226cfb` selects the Crystal profile.
 Enable `LIBRETRO_BATTLEHUD_DEBUG=1` to see profile selection and battle changes.
 See [profiles](docs/profiles.md) and [address provenance](docs/reverse-engineering.md).

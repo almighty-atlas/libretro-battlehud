@@ -22,7 +22,9 @@ into a generation-independent enum. Duplicate type bytes become one type;
 Bird, Curse, gaps and out-of-range values are rejected. Types come from live
 battle RAM, so type-changing battle effects are represented by the current values.
 
-M4 adds type badges for a valid active model. Terminal diagnostics remain available with
+M4 adds type badges for a valid active model **only at the normal battle main menu**.
+Bag, party, move selection, action text and other screens do not qualify.
+The combatant remains decoded in submenus; visibility is separate. Terminal diagnostics remain available with
 `LIBRETRO_BATTLEHUD_DEBUG=1`. The wrapper prints profile/hash/backend once and
 battle-state changes rather than every frame. Outside battle, during start/switch
 transitions, after enemy fainting and on invalid/unavailable data, the enemy model

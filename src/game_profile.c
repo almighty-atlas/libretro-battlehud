@@ -10,7 +10,17 @@ static const struct game_profile crystal_rev1 = {
     .battle_starting = 0xd264, .enemy_switching = 0xc711,
     .enemy_species = 0xd206, .enemy_level = 0xd213,
     .enemy_hp = 0xd216, .enemy_max_hp = 0xd218,
-    .enemy_type1 = 0xd224, .enemy_type2 = 0xd225
+    .enemy_type1 = 0xd224, .enemy_type2 = 0xd225,
+    .menu_data_pointer = 0xcf86, .menu_data_bank = 0xcf8a,
+    .main_menu_pointer = 0x4f34, .main_menu_bank = 0x09,
+    /* wTilemap at C4A0, 20 columns. Text at (10,14)/(16,14)/(10,16)/(16,16).
+     * PKMN expands to the two rendered glyph tiles E1/E2, not control byte 4A. */
+    .main_menu_labels = {
+        {0xc5c2, 5, {0x85, 0x88, 0x86, 0x87, 0x93}}, /* FIGHT */
+        {0xc5c8, 2, {0xe1, 0xe2}},                   /* PKMN */
+        {0xc5ea, 4, {0x8f, 0x80, 0x82, 0x8a}},       /* PACK */
+        {0xc5f0, 3, {0x91, 0x94, 0x8d}}              /* RUN */
+    }
 };
 const struct game_profile *game_profile_find(const char *sha1)
 {

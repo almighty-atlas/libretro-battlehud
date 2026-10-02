@@ -1,4 +1,5 @@
 #include "battle_decoder.h"
+#include <string.h>
 bool gen2_type_decode(uint8_t raw, enum pokemon_type *type)
 {
     static const enum pokemon_type physical[] = {
@@ -21,6 +22,24 @@ const char *pokemon_type_name(enum pokemon_type type)
         "ICE","FIGHTING","POISON","GROUND","FLYING","PSYCHIC","BUG","ROCK",
         "GHOST","DRAGON","DARK","STEEL","FAIRY"};
     return type>=TYPE_NONE && type<=TYPE_FAIRY ? names[type] : "UNKNOWN";
+}
+static bool main_menu_visible(const struct game_profile *p, battle_memory_read read, void *context)
+{
+    uint8_t pointer[2], bank;
+    if (!read(context, p->menu_data_pointer, pointer, sizeof(pointer)) ||
+        !read(context, p->menu_data_bank, &bank, 1) || bank != p->main_menu_bank ||
+        ((unsigned)pointer[0] | (unsigned)pointer[1] << 8) != p->main_menu_pointer)
+        return false;
+    /* Metadata can outlive a draw/restore. Require all four rendered labels too. */
+    for (unsigned i = 0; i < 4; ++i) {
+        const struct menu_label *label = &p->main_menu_labels[i];
+        uint8_t tiles[5];
+        if (!label->size || label->size > sizeof(tiles) ||
+            !read(context, label->address, tiles, label->size) ||
+            memcmp(tiles, label->tiles, label->size))
+            return false;
+    }
+    return true;
 }
 struct battle_state battle_decode(const struct game_profile *p,
                                  battle_memory_read read, void *context)
@@ -55,11 +74,12 @@ struct battle_state battle_decode(const struct game_profile *p,
     s.status=BATTLE_ACTIVE; s.species=species;
     s.type1=t1; s.type2=t1==t2 ? TYPE_NONE : t2;
     s.raw_type1=types[0]; s.raw_type2=types[1];
+    s.main_menu=main_menu_visible(p,read,context);
     return s;
 }
 bool battle_state_equal(const struct battle_state *a, const struct battle_state *b)
 {
     return a->status==b->status && a->mode==b->mode && a->species==b->species &&
         a->type1==b->type1 && a->type2==b->type2 && a->raw_type1==b->raw_type1 &&
-        a->raw_type2==b->raw_type2;
+        a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu;
 }

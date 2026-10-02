@@ -21,7 +21,7 @@ static uint32_t packed(enum retro_pixel_format f,uint32_t rgb)
 static struct battle_state model(enum pokemon_type t1,enum pokemon_type t2)
 {
     struct battle_state s={0}; s.status=BATTLE_ACTIVE; s.mode=2; s.species=16;
-    s.type1=t1; s.type2=t2; return s;
+    s.type1=t1; s.type2=t2; s.main_menu=true; return s;
 }
 static void check(enum retro_pixel_format f)
 {
@@ -56,6 +56,14 @@ static void check(enum retro_pixel_format f)
     for(unsigned y=17;y<30;y++) for(unsigned x=115;x<158;x++)
         assert(get(out,pitch,size,x,y)==get(input,pitch,size,x,y));
     unsigned grass_left=121;
+    assert(get(out,pitch,size,grass_left+1,3)==packed(f,0x427033));
+    /* Enter a submenu on a duplicate: the enemy stays valid, badges vanish. */
+    s.main_menu=false;
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==clean);
+    for(unsigned y=0;y<h;y++) assert(!memcmp((const uint8_t *)out+y*pitch,input+y*pitch,w*size));
+    assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==NULL);
+    s.main_menu=true;
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==output);
     assert(get(out,pitch,size,grass_left+1,3)==packed(f,0x427033));
     /* End on a duplicate must send an unmarked frame, not retain old badges. */
     out=type_hud_draw(&hud,&hidden,NULL,w,h,pitch,f); assert(out==clean);

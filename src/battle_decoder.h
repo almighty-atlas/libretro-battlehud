@@ -18,6 +18,7 @@ struct battle_state {
     uint16_t species;
     enum pokemon_type type1, type2;
     uint8_t raw_type1, raw_type2;
+    bool main_menu; /* Presentation eligibility; combatant remains valid in submenus. */
 };
 typedef bool (*battle_memory_read)(void *context, size_t address, void *out, size_t size);
 struct battle_state battle_decode(const struct game_profile *profile,

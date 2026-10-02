@@ -79,3 +79,41 @@ change, battle end and save-state restoration. See [captured evidence and its
 limits](validation.md). The startup backend/frontend version strings were not
 captured. M4 visual HUD acceptance and physical H700 behavior remain pending.
 Link/mobile and special scripted battles are not acceptance-tested.
+
+
+## Main battle menu visibility (M4 refinement)
+
+The HUD is visible only at the normal four-choice FIGHT / PKMN / PACK / RUN menu.
+The combatant remains decoded while a submenu is open; visibility is a separate
+`battle_state.main_menu` field. All addresses/signatures are profile data.
+
+| Symbol / signature | Address / value |
+|---|---|
+| `wMenuDataPointer` | `00:CF86`, little-endian pointer must equal `4F34` |
+| `wMenuDataBank` | `00:CF8A`, must equal `09` |
+| `BattleMenuHeader.MenuData` | ROM `09:4F34` |
+| `wTilemap` | `00:C4A0`, 20 columns |
+| FIGHT at (10,14) | `C5C2`: `85 88 86 87 93` |
+| PKMN at (16,14) | `C5C8`: `E1 E2` (rendered PK/MN glyphs) |
+| PACK at (10,16) | `C5EA`: `8F 80 82 8A` |
+| RUN at (16,16) | `C5F0`: `91 94 8D` |
+
+Addresses come from the same pinned `pokecrystal11.sym` used by the battle profile.
+The exact menu header/text comes from
+[engine/battle/menu.asm](https://github.com/pret/pokecrystal/blob/5beda23ffa505f62e1dad7e3d7c214d1737b3358/engine/battle/menu.asm).
+[home/menu.asm](https://github.com/pret/pokecrystal/blob/5beda23ffa505f62e1dad7e3d7c214d1737b3358/home/menu.asm)
+copies the header, stores its ROM bank, and computes text start coordinates.
+[engine/menus/menu.asm](https://github.com/pret/pokecrystal/blob/5beda23ffa505f62e1dad7e3d7c214d1737b3358/engine/menus/menu.asm)
+places columns six tiles apart and rows two tiles apart, and restores the previous
+header on menu exit. The
+[charmap](https://github.com/pret/pokecrystal/blob/5beda23ffa505f62e1dad7e3d7c214d1737b3358/constants/charmap.asm)
+and [text expansion](https://github.com/pret/pokecrystal/blob/5beda23ffa505f62e1dad7e3d7c214d1737b3358/home/text.asm)
+show that the PKMN control byte 4A renders as E1/E2.
+
+Pointer plus bank distinguishes the normal battle menu from bag/party/move menus;
+all four tile signatures additionally reject stale metadata during drawing,
+restoration and action text. Missing visibility reads fail closed. Submenu entry
+and return update the HUD even on NULL video duplicates. This exact signature does
+not enable contest/mobile/other special menu layouts; those remain out of scope.
+CPU tilemap updates and displayed frames can have transitional timing differences,
+so the actual bag/party/move entry/return behavior still requires the Mac test.
