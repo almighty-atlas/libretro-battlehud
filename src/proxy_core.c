@@ -4,6 +4,7 @@
 #include "video_marker.h"
 #include "memory_view.h"
 #include "battle_decoder.h"
+#include "training_progress.h"
 #include "hidden_power.h"
 #include "party_details.h"
 #include "sha1.h"
@@ -91,12 +92,23 @@ static bool debug_enabled;
 static bool gambatte_memory_layout;
 static const struct game_profile *profile;
 static struct battle_state battle;
+static struct training_progress progress;
+/* Private, immutable ROM copy for bank-independent Gen 1/2 base-stat reads.
+ * The virtual range is never exposed to the backend/frontend or written. */
+static uint8_t *training_rom;
+static size_t training_rom_size;
+static void clear_training_rom(void)
+{ free(training_rom);training_rom=NULL;training_rom_size=0; }
 
 static bool decoder_read(void *context, size_t address, void *out, size_t size)
 {
     (void)context;
     if (!game_loaded)
         return false;
+    if(address>=0x10000000 && address-0x10000000<training_rom_size && out && size &&
+       size<=training_rom_size-(address-0x10000000)) {
+        memcpy(out,training_rom+address-0x10000000,size);return true;
+    }
     if (memory_view_read(&memory, address, out, size))
         return true;
     /* Explicit Gambatte fallback: fixed WRAM banks 0/1 at region offsets 0/0x1000.
@@ -114,6 +126,7 @@ static bool decoder_read(void *context, size_t address, void *out, size_t size)
 
 static void clear_battle(void)
 {
+    training_progress_clear(&progress);
     memset(&battle, 0, sizeof(battle));
     if (profile)
         battle.status = BATTLE_UNAVAILABLE;
@@ -122,6 +135,7 @@ static void clear_battle(void)
 static void update_battle(void)
 {
     struct battle_state next = battle_decode(profile, decoder_read, NULL);
+    training_progress_apply(&progress,&next.training);
     if (debug_enabled && !battle_state_equal(&battle, &next)) {
         if (next.status == BATTLE_ACTIVE && !next.main_menu && !next.fight_menu)
             fprintf(stderr, "battlehud: hidden (battle submenu)\n");
@@ -189,6 +203,23 @@ static void detect_profile(const struct retro_game_info *game)
     if(profile && (!info.library_name || strcmp(info.library_name,profile->backend_name)))
         profile = NULL;
     clear_battle();
+    clear_training_rom();
+    if(profile && profile->generation<3 && game) {
+        size_t size=game->size;FILE *file=NULL;
+        if(!game->data && game->path) {
+            file=fopen(game->path,"rb");
+            if(file && !fseek(file,0,SEEK_END)) {long n=ftell(file);if(n>0 && n<=32*1024*1024)size=(size_t)n;rewind(file);}
+        }
+        if(size && size<=32*1024*1024) {
+            uint8_t *copy=malloc(size);
+            if(copy && (game->data || (file && fread(copy,1,size,file)==size))) {
+                if(game->data)memcpy(copy,game->data,size);
+                struct sha1_context sha;char checked[41];sha1_init(&sha);sha1_update(&sha,copy,size);sha1_final(&sha,checked);
+                if(!strcmp(checked,profile->sha1)){training_rom=copy;training_rom_size=size;}else free(copy);
+            } else free(copy);
+        }
+        if(file)fclose(file);
+    }
     if (debug_enabled) {
         if (profile)
             fprintf(stderr, "battlehud: profile=%s sha1=%s backend=%s %s\n",
@@ -417,6 +448,7 @@ void retro_init(void)
 void retro_deinit(void)
 {
     game_loaded = false;
+    clear_training_rom();
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();
@@ -544,8 +576,14 @@ void retro_run(void)
 {
     if (load_backend()) {
         backend.run();
-        if (game_loaded && profile)
+        if (game_loaded && profile) {
             update_battle();
+            struct training_party party;
+            bool known=training_party_read(profile,decoder_read,NULL,&party);
+            int phase=battle.status==BATTLE_OUTSIDE?0:
+                ((battle.status==BATTLE_ACTIVE || battle.status==BATTLE_TRANSITION) && battle.mode?1:-1);
+            training_progress_update(&progress,known?&party:NULL,phase);
+        }
     }
 }
 
@@ -585,6 +623,7 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
 bool retro_load_game(const struct retro_game_info *game)
 {
     game_loaded = false;
+    clear_training_rom();
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();
@@ -603,6 +642,7 @@ bool retro_load_game_special(unsigned game_type,
                              size_t num_info)
 {
     game_loaded = false;
+    clear_training_rom();
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();
@@ -618,6 +658,7 @@ bool retro_load_game_special(unsigned game_type,
 void retro_unload_game(void)
 {
     game_loaded = false;
+    clear_training_rom();
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();

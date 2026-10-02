@@ -194,3 +194,12 @@ in the lower-left pane. Original right-hand stats remain untouched. Training
 fixtures and pixel-boundary/duplicate tests pass, including ASan+UBSan.
 Interactive acceptance of the new table and physical-device acceptance are
 pending; see [training stats](training-stats.md).
+
+## Issue #4: training progress
+
+Local checks pass for all generation formulas, Gen 3 EV budget, conservative
+party observation and raw/BON/GAIN/NA renderer switching. See
+[coverage and pending interactive acceptance](training-progress.md#validation).
+The configured test suite now contains 21 CTest cases; the CI also runs real
+Gambatte/mGBA direct-versus-proxy integration on Linux and Apple Silicon.
+The new training views have not yet been manually accepted on macOS or NextUI.

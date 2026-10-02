@@ -1,11 +1,11 @@
 #include "hud_options.h"
 #include <stdlib.h>
 #include <string.h>
-#define COUNT 6
-static const char *keys[COUNT]={"battlehud_types","battlehud_moves","battlehud_training","battlehud_hidden_power","battlehud_party_details","battlehud_layout"};
-static const char *names[COUNT]={"BattleHUD: Type icons","BattleHUD: Move effectiveness","BattleHUD: Training values","BattleHUD: Hidden Power","BattleHUD: Nature and ability","BattleHUD: Layout"};
-static const char *info[COUNT]={"Show opponent types in battle menus.","Show move hints in FIGHT.","Show DV/IV and training values on the stats page.","Show calculated Hidden Power on the stats page.","Show nature, stat arrows and ability in supported Gen 3 summaries.","Detailed includes training experience/EVs; compact shows DV/IV only. Other displays stay independent."};
-static const char *legacy[COUNT]={"BattleHUD: Type icons; enabled|disabled","BattleHUD: Move effectiveness; enabled|disabled","BattleHUD: Training values; enabled|disabled","BattleHUD: Hidden Power; enabled|disabled","BattleHUD: Nature and ability; enabled|disabled","BattleHUD: Layout; detailed|compact"};
+#define COUNT 7
+static const char *keys[COUNT]={"battlehud_types","battlehud_moves","battlehud_training","battlehud_hidden_power","battlehud_party_details","battlehud_layout","battlehud_training_view"};
+static const char *names[COUNT]={"BattleHUD: Type icons","BattleHUD: Move effectiveness","BattleHUD: Training values","BattleHUD: Hidden Power","BattleHUD: Nature and ability","BattleHUD: Layout","BattleHUD: Training view"};
+static const char *info[COUNT]={"Show opponent types in battle menus.","Show move hints in FIGHT.","Show DV/IV and training values on the stats page.","Show calculated Hidden Power on the stats page.","Show nature, stat arrows and ability in supported Gen 3 summaries.","Detailed includes training experience/EVs; compact shows DV/IV only. Other displays stay independent.","Raw training, calculated stat contribution at the current level, or observed raw gains from the last complete battle. NA means unavailable; compact hides this column."};
+static const char *legacy[COUNT]={"BattleHUD: Type icons; enabled|disabled","BattleHUD: Move effectiveness; enabled|disabled","BattleHUD: Training values; enabled|disabled","BattleHUD: Hidden Power; enabled|disabled","BattleHUD: Nature and ability; enabled|disabled","BattleHUD: Layout; detailed|compact","BattleHUD: Training view; raw|bonus|gains"};
 struct allocation {void *ptr;struct allocation *next;};
 static struct allocation *allocations;
 static bool registered;
@@ -27,7 +27,7 @@ static TYPE *NAME(const TYPE *src) { \
         if(collision){continue;} TYPE *d=&out[n++];d->key=keys[i];FILL; \
     }return out; \
 }
-#define VALUES d->values[0].value=i==5?"detailed":"enabled";d->values[1].value=i==5?"compact":"disabled";d->default_value=d->values[0].value
+#define VALUES d->values[0].value=i==6?"raw":i==5?"detailed":"enabled";d->values[1].value=i==6?"bonus":i==5?"compact":"disabled";if(i==6)d->values[2].value="gains";d->default_value=d->values[0].value
 MERGE(merge_old,struct retro_variable,d->value=legacy[i])
 MERGE(merge_v1,struct retro_core_option_definition,d->desc=names[i];d->info=info[i];VALUES)
 MERGE(merge_v2_defs,struct retro_core_option_v2_definition,d->desc=names[i];d->info=info[i];VALUES)
@@ -77,7 +77,8 @@ unsigned hud_options_read(retro_environment_t cb)
     for(unsigned i=0;i<COUNT;i++){
         struct retro_variable v={keys[i],NULL};
         if(!cb(RETRO_ENVIRONMENT_GET_VARIABLE,&v) || !v.value)continue;
-        if(i==5){if(!strcmp(v.value,"compact"))flags|=HUD_COMPACT;}
+        if(i==6){if(!strcmp(v.value,"bonus"))flags|=HUD_BONUS;else if(!strcmp(v.value,"gains"))flags|=HUD_GAINS;}
+        else if(i==5){if(!strcmp(v.value,"compact"))flags|=HUD_COMPACT;}
         else if(!strcmp(v.value,"disabled"))flags &= ~(1u<<i);
     }
     /* Do not consume GET_VARIABLE_UPDATE: it belongs to the backend. */

@@ -5,11 +5,13 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
-static uint8_t ram[0x2000];
+static uint8_t ram[0x2000],rom[0x80000];
 static size_t missing;
 static bool read_ram(void *ctx,size_t address,void *out,size_t bytes)
 {
     (void)ctx;
+    if(address==missing)return false;
+    if(address>=0x10000000 && address<0x10080000 && bytes<=0x10080000-address){memcpy(out,rom+address-0x10000000,bytes);return true;}
     if(address==missing || address<0xc000 || address>=0xe000 || bytes>0xe000-address) return false;
     memcpy(out,ram+address-0xc000,bytes); return true;
 }
@@ -17,6 +19,7 @@ static void put(unsigned address,uint8_t value) { ram[address-0xc000]=value; }
 static void fixture(unsigned slot,uint8_t dvs1,uint8_t dvs2)
 {
     memset(ram,0,sizeof(ram));
+    const uint8_t cyndaquil[]={155,39,52,43,65,60,50};memcpy(rom+0x51424+154*32,cyndaquil,7);
     put(0xcf64,3); put(0xcf63,6); put(0xcf5f,0);
     put(0xd109,(uint8_t)slot); put(0xdcd7,6); put(0xd108,155);
     put(0xc515,0x3a); put(0xc516,0x3b);
@@ -40,6 +43,9 @@ int main(void)
     struct training_stats s=training_stats_decode(p,read_ram,NULL);
     const uint8_t expected_dvs[6]={5,10,5,3,3,12};
     const uint16_t expected_evs[6]={0,1,256,0x1234,0x1234,65535};
+    const uint8_t base[]={39,52,43,60,50,65};
+    assert(s.level==10 && s.bonus_known && s.identity_known && !memcmp(s.base,base,6));
+    struct training_stats direct=training_party_mon(p,read_ram,NULL,0);assert(training_stats_equal(&s,&direct));
     assert(s.visible && s.slot==0 && s.species==155);
     assert(!memcmp(s.dv,expected_dvs,sizeof(expected_dvs)));
     assert(!memcmp(s.ev,expected_evs,sizeof(expected_evs)));

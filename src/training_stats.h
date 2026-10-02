@@ -13,9 +13,16 @@ struct training_stats {
     bool nature_known, ability_known;
     uint8_t nature, ability, ability_slot;
     char ability_name[13];
+    uint8_t level, base[6];
+    bool bonus_known, identity_known, gain_known;
+    uint8_t identity[32]; /* Conservative party identity; never a slot alone. */
+    uint16_t gain[6]; /* Observed raw training change, not a prediction. */
 };
 typedef bool (*training_memory_read)(void *, size_t, void *, size_t);
 struct training_stats training_stats_decode(const struct game_profile *profile,
                                            training_memory_read read, void *context);
+/* Decode a party member without depending on a summary screen. Eggs are excluded. */
+struct training_stats training_party_mon(const struct game_profile *profile,
+                                        training_memory_read read, void *context, unsigned slot);
 bool training_stats_equal(const struct training_stats *a,const struct training_stats *b);
 #endif

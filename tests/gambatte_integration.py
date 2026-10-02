@@ -20,7 +20,9 @@ class TrainingStats(C.Structure):
                 ("dv", C.c_uint8 * 6), ("ev", C.c_uint16 * 6),
                 ("nature_known", C.c_bool), ("ability_known", C.c_bool),
                 ("nature", C.c_uint8), ("ability", C.c_uint8), ("ability_slot", C.c_uint8),
-                ("ability_name", C.c_char * 13)]
+                ("ability_name", C.c_char * 13), ("level", C.c_uint8), ("base", C.c_uint8 * 6),
+                ("bonus_known", C.c_bool), ("identity_known", C.c_bool), ("gain_known", C.c_bool),
+                ("identity", C.c_uint8 * 32), ("gain", C.c_uint16 * 6)]
 
 
 class BattleState(C.Structure):
@@ -330,7 +332,7 @@ def main():
     direct_options = results[0].pop("options")
     proxy_options = results[1].pop("options")
     assert direct_options and all(proxy_options.get(k) == v for k, v in direct_options.items())
-    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout"}
+    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout", "battlehud_training_view"}
     assert set(proxy_options) - set(direct_options) == expected
     assert results[0] == results[1], results
     label = "marker and non-marker-area parity" if marker_test else "direct/proxy parity"

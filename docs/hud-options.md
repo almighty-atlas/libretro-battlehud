@@ -12,6 +12,7 @@ international registration formats are supported. HUD descriptions use English.
 | `battlehud_training` | BattleHUD: Training values | `enabled` / `disabled`; DV/IV and training table |
 | `battlehud_hidden_power` | BattleHUD: Hidden Power | `enabled` / `disabled`; independent Gen 2/3 type and power row |
 | `battlehud_party_details` | BattleHUD: Nature and ability | `enabled` / `disabled`; Gen 3 name, stat arrows and ability |
+| `battlehud_training_view` | BattleHUD: Training view | `raw` / `bonus` / `gains`; raw training, calculated stat contribution or observed last-battle change; defaults to raw. See [rules](training-progress.md). |
 | `battlehud_layout` | BattleHUD: Layout | `detailed` / `compact`; compact omits EV/stat-experience columns and their total/footer, retaining DV/IV; other toggles remain independent |
 
 Options affect only supported ROM profiles and pages, including the separate

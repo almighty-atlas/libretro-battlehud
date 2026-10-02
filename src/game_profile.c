@@ -32,6 +32,7 @@ static const struct game_profile crystal_rev1 = {
     },
     .player_moves = 0xc62e, .player_dvs = 0xc632, .player_pp = 0xc634,
     .player_disable = 0xc675, .enemy_substatus1 = 0xc66d,
+    .species_info=0x10051424,
     .stats_flags = 0xcf64, .stats_state = 0xcf63, .mon_source = 0xcf5f,
     .party_index = 0xd109, .party_count = 0xdcd7, .party_species = 0xd108,
     .party_base = 0xdcdf, .temp_mon = 0xd10e, .stats_page_marker = 0xc515,
@@ -58,6 +59,7 @@ static const struct game_profile crystal_rev1 = {
         {0xc4f8,1,{0x7d}}, {0xc507,1,{0x7e}} }, \
     .mon_source=0xcc49, .party_index=0xcf92, .party_count=0xd163, \
     .party_base=0xd16b, .temp_mon=0xcf98, \
+    .species_info=0x100383de, .mew_info=0x1000425b, \
     .stats_labels={ \
         {0xc455,6,{0x80,0x93,0x93,0x80,0x82,0x8a}}, \
         {0xc47d,7,{0x83,0x84,0x85,0x84,0x8d,0x92,0x84}}, \

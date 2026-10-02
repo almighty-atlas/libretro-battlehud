@@ -27,7 +27,7 @@ struct game_profile {
     struct menu_label stats_labels[5];
     uint32_t gba_party_count, gba_party_base, summary_pointer;
     uint32_t main_callback, summary_callback, tasks, input_task, palette_fade;
-    uint32_t species_info, ability_names;
+    uint32_t species_info, ability_names, mew_info;
     uint16_t enemy_identity,battle_type,escaped,move_rows;
     struct gba_battle_profile gba_battle;
 };

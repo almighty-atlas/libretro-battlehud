@@ -79,3 +79,7 @@ See [possible next features](docs/feature-ideas.md) for prioritized extension id
 
 HUD displays can now be configured independently through Libretro core options,
 with detailed/compact training layouts. See [HUD preferences](docs/hud-options.md).
+
+Training views now include raw values, generation-specific stat contributions,
+observed last-battle gains and the remaining Gen 3 EV budget. See
+[training progress](docs/training-progress.md).

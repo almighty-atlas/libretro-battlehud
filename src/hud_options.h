@@ -7,6 +7,8 @@
 #define HUD_POWER 8u
 #define HUD_DETAILS 16u
 #define HUD_COMPACT 32u
+#define HUD_BONUS 64u
+#define HUD_GAINS 128u
 #define HUD_DEFAULT (HUD_TYPES|HUD_MOVES|HUD_TRAINING|HUD_POWER|HUD_DETAILS)
 /* Registration copies keep backend definitions and translations intact. */
 bool hud_options_register(retro_environment_t cb, unsigned cmd, void *data);

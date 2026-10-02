@@ -1,6 +1,8 @@
 #include "training_stats.h"
 #include "party_details.h"
 #include <string.h>
+#include "gen1_species_data.h"
+static struct training_stats decode_mon(const struct game_profile *,training_memory_read,void *,unsigned,const uint8_t *);
 static struct training_stats crystal_decode(const struct game_profile *p,
                                            training_memory_read read, void *context)
 {
@@ -24,13 +26,7 @@ static struct training_stats crystal_decode(const struct game_profile *p,
        !read(context,(size_t)p->party_base+index*sizeof(party),party,sizeof(party)) ||
        memcmp(temp,party,sizeof(temp)) || temp[0]!=species || !temp[31] || temp[31]>100)
         return s;
-    uint8_t attack=temp[21]>>4,defense=temp[21]&15,speed=temp[22]>>4,special=temp[22]&15;
-    s.dv[0]=(uint8_t)((attack&1)*8+(defense&1)*4+(speed&1)*2+(special&1));
-    s.dv[1]=attack; s.dv[2]=defense; s.dv[3]=special; s.dv[4]=special; s.dv[5]=speed;
-    const unsigned offsets[6]={11,13,15,19,19,17};
-    for(unsigned i=0;i<6;i++) s.ev[i]=(uint16_t)((unsigned)temp[offsets[i]]*256+temp[offsets[i]+1]);
-    s.slot=index; s.generation=2; s.species=species; s.visible=true;
-    return s;
+    return decode_mon(p,read,context,index,temp);
 }
 /* All multibyte decoding uses byte operations; host endian/alignment is irrelevant. */
 static uint16_t le16(const uint8_t *p) { return (uint16_t)(p[0]|(unsigned)p[1]<<8); }
@@ -51,12 +47,7 @@ static struct training_stats kanto_decode(const struct game_profile *p,training_
     }
     if(!read(ctx,p->temp_mon,temp,44) || !read(ctx,p->party_base+index*44,party,44) ||
        memcmp(temp,party,44) || !temp[0] || temp[0]>190 || !temp[33] || temp[33]>100) return s;
-    unsigned a=temp[27]>>4,d=temp[27]&15,v=temp[28]>>4,c=temp[28]&15;
-    s.dv[0]=(uint8_t)((a&1)*8+(d&1)*4+(v&1)*2+(c&1));
-    s.dv[1]=(uint8_t)a;s.dv[2]=(uint8_t)d;s.dv[3]=s.dv[4]=(uint8_t)c;s.dv[5]=(uint8_t)v;
-    const unsigned offsets[]={17,19,21,25,25,23};
-    for(unsigned i=0;i<6;i++) s.ev[i]=(uint16_t)((unsigned)temp[offsets[i]]*256+temp[offsets[i]+1]);
-    s.visible=true;s.slot=index;s.species=temp[0];s.generation=1;return s;
+    return decode_mon(p,read,ctx,index,temp);
 }
 static struct training_stats emerald_decode(const struct game_profile *p,training_memory_read read,void *ctx)
 {
@@ -75,6 +66,36 @@ static struct training_stats emerald_decode(const struct game_profile *p,trainin
        screen[2]>=count || screen[3]!=count-1 ||
        !read(ctx,ptr+12,temp,100) || !read(ctx,p->gba_party_base+screen[2]*100,party,100) ||
        memcmp(temp,party,100) || (temp[19]&7)!=2 || !temp[84] || temp[84]>100) return s;
+    return decode_mon(p,read,ctx,screen[2],temp);
+}
+static struct training_stats decode_mon(const struct game_profile *p,training_memory_read read,
+                                        void *ctx,unsigned slot,const uint8_t *temp)
+{
+    struct training_stats s={0};
+    if(p->generation<3) {
+        unsigned gen=p->generation,level=gen==1?33:31,dvs=gen==1?27:21,exp=gen==1?17:11;
+        if(!temp[0] || temp[0]>(gen==1?190:251) || (gen==1 && !kanto_dex[temp[0]]) ||
+           !temp[level] || temp[level]>100) return s;
+        unsigned a=temp[dvs]>>4,d=temp[dvs]&15,v=temp[dvs+1]>>4,c=temp[dvs+1]&15;
+        s.dv[0]=(uint8_t)((a&1)*8+(d&1)*4+(v&1)*2+(c&1));
+        s.dv[1]=(uint8_t)a;s.dv[2]=(uint8_t)d;s.dv[3]=s.dv[4]=(uint8_t)c;s.dv[5]=(uint8_t)v;
+        const unsigned order[]={0,1,2,4,4,3};
+        for(unsigned i=0;i<6;i++) s.ev[i]=(uint16_t)((unsigned)temp[exp+2*order[i]]*256+temp[exp+2*order[i]+1]);
+        s.visible=true;s.slot=(uint8_t)slot;s.species=temp[0];s.generation=(uint8_t)gen;s.level=temp[level];
+        s.identity[0]=temp[0];memcpy(s.identity+1,temp+(gen==1?12:6),2);memcpy(s.identity+3,temp+dvs,2);
+        size_t names=p->party_base+6*(gen==1?44u:48u);
+        s.identity_known=read(ctx,names+slot*11,s.identity+5,11) && read(ctx,names+66+slot*11,s.identity+16,11);
+        const unsigned base_order[]={0,1,2,4,5,3};
+        unsigned dex=gen==1?kanto_dex[temp[0]]:temp[0];uint8_t record[7];
+        size_t base=gen==1 && dex==151?p->mew_info:p->species_info+(dex-1)*(gen==1?28u:32u);
+        if(base && read(ctx,base,record,gen==1?6:7) && record[0]==dex) {
+            bool valid=true;
+            for(unsigned i=0;i<6;i++) {s.base[i]=record[1+(gen==1?order[i]:base_order[i])];if(!s.base[i])valid=false;}
+            s.bonus_known=valid;
+        }
+        return s;
+    }
+    if((temp[19]&7)!=2 || !temp[84] || temp[84]>100) return s;
     uint8_t clear[48]; uint32_t pid=le32(temp),key=pid^le32(temp+4);
     for(unsigned i=0;i<48;i++) clear[i]=temp[32+i]^(uint8_t)(key>>(8*(i%4)));
     unsigned checksum=0;for(unsigned i=0;i<48;i+=2) checksum+=le16(clear+i);
@@ -93,10 +114,26 @@ static struct training_stats emerald_decode(const struct game_profile *p,trainin
     const unsigned order[]={0,1,2,4,5,3};unsigned total=0;
     for(unsigned i=0;i<6;i++) {s.dv[i]=(uint8_t)((iv>>(order[i]*5))&31);s.ev[i]=ev[order[i]];total+=s.ev[i];}
     if(total>510) return (struct training_stats){0};
-    s.visible=true;s.slot=screen[2];s.species=species;s.generation=3;
+    s.visible=true;s.slot=(uint8_t)slot;s.species=species;s.generation=3;s.level=temp[84];
+    memcpy(s.identity,temp,18);memcpy(s.identity+18,clear+pos[2]*12+4,4);
+    s.identity[22]=(uint8_t)species;s.identity[23]=(uint8_t)(species>>8);s.identity_known=true;
+    uint8_t base[6];
+    if(p->species_info && read(ctx,p->species_info+(size_t)species*28,base,6)) {
+        bool valid=true;for(unsigned i=0;i<6;i++){s.base[i]=base[order[i]];if(!s.base[i])valid=false;}s.bonus_known=valid;
+    }
     s.nature_known=true;s.nature=(uint8_t)(pid%25);s.ability_slot=(uint8_t)(iv>>31);
     s.ability_known=gen3_ability_read(p,read,ctx,species,s.ability_slot,&s.ability,s.ability_name);
     return s;
+}
+struct training_stats training_party_mon(const struct game_profile *p,training_memory_read read,void *ctx,unsigned slot)
+{
+    struct training_stats empty={0};uint8_t count,mon[100];
+    if(!p || !read || p->generation<1 || p->generation>3 || slot>=6 || !read(ctx,p->generation==3?p->gba_party_count:p->party_count,&count,1) ||
+       !count || count>6 || slot>=count) return empty;
+    unsigned stride=p->generation==1?44:p->generation==2?48:100;
+    size_t addr=(p->generation==3?p->gba_party_base:p->party_base)+slot*stride;
+    if(!read(ctx,addr,mon,stride)) return empty;
+    return decode_mon(p,read,ctx,slot,mon);
 }
 struct training_stats training_stats_decode(const struct game_profile *p,training_memory_read read,void *ctx)
 {
@@ -109,7 +146,9 @@ struct training_stats training_stats_decode(const struct game_profile *p,trainin
 bool training_stats_equal(const struct training_stats *a,const struct training_stats *b)
 {
     return a->visible==b->visible && a->generation==b->generation && a->slot==b->slot && a->species==b->species &&
-        a->nature_known==b->nature_known && a->ability_known==b->ability_known &&
+        a->level==b->level && a->bonus_known==b->bonus_known && a->identity_known==b->identity_known &&
+        a->gain_known==b->gain_known && !memcmp(a->base,b->base,6) && !memcmp(a->identity,b->identity,32) &&
+        !memcmp(a->gain,b->gain,sizeof(a->gain)) && a->nature_known==b->nature_known && a->ability_known==b->ability_known &&
         a->nature==b->nature && a->ability==b->ability && a->ability_slot==b->ability_slot &&
         !memcmp(a->ability_name,b->ability_name,sizeof(a->ability_name)) &&
         !memcmp(a->dv,b->dv,sizeof(a->dv)) && !memcmp(a->ev,b->ev,sizeof(a->ev));

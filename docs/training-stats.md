@@ -140,3 +140,6 @@ The Gen 2/3 training panes now also show [Hidden Power type/base power](hidden-p
 Emerald also shows [nature arrows and stored ability](nature-ability.md) above the
 training table. Its additional banner occupies y=104..111; original stats end at
 y=103 and remain untouched.
+
+Training panes also support [raw/bonus/observed-gains views](training-progress.md),
+including the remaining Emerald EV budget.

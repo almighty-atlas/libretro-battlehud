@@ -305,6 +305,19 @@ static void preferences(enum retro_pixel_format f)
         unsigned rowtop=gen==3?121:top+(gen==2?11:12);
         for(unsigned y=rowtop;y<rowtop+7;y++)for(unsigned x=left+49;x<left+79;x++)
             assert(get(out,pitch,size,x,y)==packed(f,0x18202c));
+        s.training.level=100;s.training.bonus_known=true;memset(s.training.base,100,6);
+        for(unsigned i=0;i<6;i++)s.training.ev[i]=gen==3?84:65535;
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_BONUS);assert(out);
+        uint8_t bonus_frame[sizeof(frame)];memcpy(bonus_frame,out,pitch*h);
+        s.training.bonus_known=false;
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_BONUS);assert(out);
+        assert(memcmp(bonus_frame,out,pitch*h));
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_GAINS);assert(out);
+        uint8_t no_gain[sizeof(frame)];memcpy(no_gain,out,pitch*h);
+        s.training.gain_known=true;s.training.gain[0]=gen==3?4:12345;
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_GAINS);assert(out);
+        assert(memcmp(no_gain,out,pitch*h));
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING);assert(out);
         out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,0);assert(out);
         for(unsigned y=0;y<h;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*size));
         type_hud_clear(&hud);

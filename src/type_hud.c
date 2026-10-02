@@ -1,6 +1,7 @@
 #include "type_hud.h"
 #include "hidden_power.h"
 #include "party_details.h"
+#include "training_progress.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -174,12 +175,17 @@ static void training_cell(struct type_hud *h,size_t bpp,const struct training_st
     snprintf(value,sizeof(value),"%u",(unsigned)s->dv[stat]);
     stats_text(h,bpp,left+39-(unsigned)strlen(value)*6,top,value,0xffffff);
     if(options&HUD_COMPACT) return;
-    snprintf(value,sizeof(value),"%u",(unsigned)s->ev[stat]);
+    uint16_t number=s->ev[stat];bool known=true;
+    if(options&HUD_GAINS){known=s->gain_known;number=s->gain[stat];}
+    else if(options&HUD_BONUS)known=training_bonus(s,stat,&number);
+    if(known)snprintf(value,sizeof(value),"%u",(unsigned)number);
+    else strcpy(value,"NA");
     stats_text(h,bpp,left+79-(unsigned)strlen(value)*6,top,value,0xffffff);
 }
 static void training_table(struct type_hud *h,size_t bpp,const struct training_stats *s,unsigned options)
 {
     const char *labels[]={"HP","ATK","DEF","SPA","SPD","SPE"};
+    const char *heading=options&HUD_GAINS?"GAIN":options&HUD_BONUS?"BON":s->generation==3?"EV":"EXP";
     if(s->generation==3) {
         /* Two three-row columns replace the EXP pane below stats, preserving portrait,
          * held item, level and all original stat numbers. */
@@ -187,27 +193,31 @@ static void training_table(struct type_hud *h,size_t bpp,const struct training_s
             pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
         for(unsigned col=0;col<2;col++) {
             unsigned left=80+col*80;
-            stats_text(h,bpp,left+27,113,"IV",0x90c4ff);if(!(options&HUD_COMPACT)) stats_text(h,bpp,left+49,113,"EV",0x90c4ff);
+            stats_text(h,bpp,left+27,113,"IV",0x90c4ff);if(!(options&HUD_COMPACT)) stats_text(h,bpp,left+49,113,heading,0x90c4ff);
             for(unsigned row=0;row<3;row++) {
                 unsigned i=col*3+row;training_cell(h,bpp,s,i,left,121+row*10,labels[i],options);
             }
         }
 
-        unsigned total=0;for(unsigned i=0;i<6;i++) total+=s->ev[i];char text[24];
-        snprintf(text,sizeof(text),"EV %u OF 510",total);if(!(options&HUD_COMPACT)) stats_text(h,bpp,82,152,text,0x90c4ff);
+        unsigned used,left;char text[24];
+        if(options&HUD_GAINS)snprintf(text,sizeof(text),"%s",s->gain_known?"LAST BATTLE":"NO BASELINE");
+        else if(training_budget(s,&used,&left))snprintf(text,sizeof(text),"EV%u R%u",used,left);
+        else strcpy(text,"EV NA");
+        if(!(options&HUD_COMPACT)) stats_text(h,bpp,82,152,text,0x90c4ff);
 
         return;
     }
     unsigned left=s->generation==1 ? 80 : 0,top=s->generation==1 ? 72 : 64;
     for(unsigned y=top;y<144;y++) for(unsigned x=left;x<left+80;x++)
         pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
-    stats_text(h,bpp,left+27,top+2,"DV",0x90c4ff);if(!(options&HUD_COMPACT)) stats_text(h,bpp,left+49,top+2,s->generation==2 ? "EXP" : "EV",0x90c4ff);
+    stats_text(h,bpp,left+27,top+2,"DV",0x90c4ff);if(!(options&HUD_COMPACT)) stats_text(h,bpp,left+49,top+2,heading,0x90c4ff);
     const unsigned kanto_order[]={0,1,2,5,3};
     for(unsigned row=0;row<(s->generation==1 ? 5u : 6u);row++) {
         unsigned i=s->generation==1 ? kanto_order[row] : row;
         training_cell(h,bpp,s,i,left,top+(s->generation==2 ? 11u : 12u)+row*10,s->generation==1 && i==3 ? "SPC" : labels[i],options);
     }
-    if(s->generation==1 && !(options&HUD_COMPACT)) stats_text(h,bpp,left+2,137,"STAT EXP",0x90c4ff);
+    if(s->generation==1 && !(options&HUD_COMPACT)) stats_text(h,bpp,left+2,137,
+        options&HUD_GAINS?(s->gain_known?"LAST BATTLE":"NO BASELINE"):options&HUD_BONUS?"STAT BONUS":"STAT EXP",0x90c4ff);
 }
 static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
 {

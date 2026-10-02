@@ -3,6 +3,7 @@
 #endif
 #include "training_stats.h"
 #include "battle_decoder.h"
+#include "training_progress.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +13,7 @@ static unsigned ability_slot;static uint16_t fixture_species=277;
 static size_t missing;
 static uint8_t *at(size_t a,size_t n)
 {
+    if(a>=0x10000000 && a<0x10080000 && n<=0x10080000-a) return rom+a-0x10000000;
     if(a>=0xc000 && a<0xe000 && n<=0xe000-a) return gb+a-0xc000;
     if(a>=0x02000000 && a<0x02040000 && n<=0x02040000-a) return ewram+a-0x02000000;
     if(a>=0x03000000 && a<0x03008000 && n<=0x03008000-a) return iwram+a-0x03000000;
@@ -29,6 +31,8 @@ static void kanto_fixture(const struct game_profile *p,unsigned slot,uint8_t a,u
     const uint16_t exp[]={0,1,256,65535,0x1234};
     for(unsigned i=0;i<5;i++){mon[17+2*i]=(uint8_t)(exp[i]>>8);mon[18+2*i]=(uint8_t)exp[i];}
     memcpy(at(p->party_base+slot*44,44),mon,44);
+    uint8_t *record=at(p->species_info+6*28,6);record[0]=7;
+    const uint8_t squirtle[]={44,48,65,43,50};memcpy(record+1,squirtle,5);
 }
 static void kanto_test(const char *hash)
 {
@@ -37,6 +41,9 @@ static void kanto_test(const char *hash)
         kanto_fixture(p,slot,0xa5,0xc3);uint8_t before[sizeof(gb)];memcpy(before,gb,sizeof(gb));
         struct training_stats s=training_stats_decode(p,read_memory,NULL);
         const uint8_t dv[]={5,10,5,3,3,12};const uint16_t ev[]={0,1,256,0x1234,0x1234,65535};
+        const uint8_t base[]={44,48,65,50,50,43};
+        assert(s.level==12 && s.bonus_known && s.identity_known && !memcmp(s.base,base,6));
+        struct training_stats direct=training_party_mon(p,read_memory,NULL,slot);assert(training_stats_equal(&s,&direct));
         assert(s.visible && s.generation==1 && s.slot==slot && s.species==177 && !s.nature_known && !s.ability_known);
         assert(!memcmp(s.dv,dv,6) && !memcmp(s.ev,ev,sizeof(ev)) && !memcmp(before,gb,sizeof(gb)));
         struct battle_state state=battle_decode(p,read_memory,NULL);assert(state.status==BATTLE_OUTSIDE && state.training.visible);
@@ -57,6 +64,7 @@ static const char *const orders[]={"GAEM","GAME","GEAM","GEMA","GMAE","GMEA","AG
 static void emerald_fixture(const struct game_profile *p,unsigned slot,unsigned permutation,unsigned variant)
 {
     memset(ewram,0,sizeof(ewram));memset(iwram,0,sizeof(iwram));memset(rom,0,sizeof(rom));
+    const uint8_t treecko[]={40,45,35,70,65,55};memcpy(at(p->species_info+277*28,6),treecko,6);
     *at(p->species_info+277*28+22,1)=65;*at(p->species_info+19*28+22,1)=50;*at(p->species_info+19*28+23,1)=62;
     const char *names[]={"OVERGROW","RUN AWAY","GUTS"};const uint8_t ids[]={65,50,62};
     for(unsigned n=0;n<3;n++) {uint8_t *name=at(p->ability_names+ids[n]*13,13);memset(name,0xff,13);for(unsigned i=0;names[n][i];i++)name[i]=names[n][i]==' ' ? 0 : (uint8_t)(names[n][i]-'A'+0xbb);}
@@ -88,12 +96,19 @@ static void emerald_test(void)
     for(unsigned permutation=0;permutation<24;permutation++)for(unsigned slot=0;slot<6;slot++) {
         emerald_fixture(p,slot,permutation,false);uint8_t before[100];memcpy(before,at(summary+12,100),100);
         struct training_stats s=training_stats_decode(p,read_memory,NULL);
+        const uint8_t base[]={40,45,35,65,55,70};
+        assert(s.level==12 && s.bonus_known && s.identity_known && !memcmp(s.base,base,6));
+        struct training_stats direct=training_party_mon(p,read_memory,NULL,slot);assert(training_stats_equal(&s,&direct));
         assert(s.visible && s.slot==slot && s.species==277 && s.generation==3);
         assert(s.nature_known && s.nature==(24*12345+permutation)%25);
         assert(s.ability_known && s.ability==65 && s.ability_slot==0 && !strcmp(s.ability_name,"OVERGROW"));
         assert(!memcmp(s.dv,iv,6) && !memcmp(s.ev,ev,sizeof(ev)) && !memcmp(before,at(summary+12,100),100));
         struct battle_state state=battle_decode(p,read_memory,NULL);assert(state.status==BATTLE_OUTSIDE && state.training.visible);
     }
+    emerald_fixture(p,0,0,false);*at(p->gba_party_count,1)=1;
+    struct training_party snapshot;assert(training_party_read(p,read_memory,NULL,&snapshot) && snapshot.count==1);
+    *at(p->gba_party_count,1)=2;memcpy(at(p->gba_party_base+100,100),at(p->gba_party_base,100),100);
+    assert(!training_party_read(p,read_memory,NULL,&snapshot)); /* Identical PID/OT/IVs/nickname. */
     pid_override=true;
     for(unsigned nature=0;nature<25;nature++) {
         forced_pid=25*10000+nature;emerald_fixture(p,0,0,false);
@@ -111,6 +126,9 @@ static void emerald_test(void)
     struct training_stats none=training_stats_decode(p,read_memory,NULL);
     assert(none.visible && none.ability_known && none.ability==0 && !strcmp(none.ability_name,"NONE"));
     pid_override=false;ability_slot=0;
+    emerald_fixture(p,0,0,false);missing=p->species_info+277*28;
+    struct training_stats unavailable=training_stats_decode(p,read_memory,NULL);
+    assert(unavailable.visible && !unavailable.bonus_known && unavailable.ability_known);missing=0;
     const size_t rom_reads[]={p->species_info+277*28+22,p->ability_names+65*13};
     for(unsigned i=0;i<2;i++) {
         emerald_fixture(p,0,0,false);missing=rom_reads[i];
