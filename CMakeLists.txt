@@ -9,6 +9,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
 add_library(pokemon_gambatte_libretro SHARED
+    src/hud_options.c
     src/proxy_core.c
     src/video_marker.c
     src/memory_view.c
@@ -45,6 +46,11 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 )
 
 if(BUILD_TESTING)
+    add_executable(hud_options_test tests/hud_options_test.c src/hud_options.c)
+    target_include_directories(hud_options_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_compile_options(hud_options_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME hud_options COMMAND hud_options_test)
+    set_tests_properties(hud_options PROPERTIES TIMEOUT 10)
     add_executable(party_details_test tests/party_details_test.c src/party_details.c src/game_profile.c)
     target_include_directories(party_details_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_options(party_details_test PRIVATE -Wall -Wextra -Wpedantic)

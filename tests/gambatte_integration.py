@@ -35,7 +35,7 @@ class TypeHud(C.Structure):
                 ("clean_capacity", C.c_size_t), ("output_capacity", C.c_size_t),
                 ("width", C.c_uint), ("height", C.c_uint), ("pitch", C.c_size_t),
                 ("format", C.c_int), ("has_frame", C.c_bool), ("has_presented", C.c_bool),
-                ("presented", BattleState)]
+                ("presented", BattleState), ("presented_options", C.c_uint)]
 
 
 class Info(C.Structure):
@@ -62,6 +62,9 @@ def worker(core_path, directory):
     marker_test = os.environ.get("LIBRETRO_BATTLEHUD_TEST_MARKER") == "1"
     require_marker = os.environ.get("BATTLEHUD_EXPECT_MARKER") == "1"
     pixel_format = 0  # Libretro defaults to 0RGB1555.
+    options = {}
+    class Variable(C.Structure):
+        _fields_ = [("key", C.c_char_p), ("value", C.c_char_p)]
     directory_bytes = os.fsencode(directory)
 
     @ENV
@@ -79,7 +82,13 @@ def worker(core_path, directory):
         if cmd == 17:  # GET_VARIABLE_UPDATE
             C.cast(data, C.POINTER(C.c_bool))[0] = False
             return True
-        if cmd == 16:  # SET_VARIABLES; GET_VARIABLE returns false for defaults.
+        if cmd == 16:  # Legacy option registration must retain every backend default.
+            options.clear()
+            definitions = C.cast(data, C.POINTER(Variable))
+            for i in range(1024):
+                if not definitions[i].key:
+                    break
+                options[definitions[i].key.decode()] = definitions[i].value.decode()
             return True
         return False
 
@@ -278,6 +287,7 @@ def worker(core_path, directory):
         assert mapped_read(0xc123, C.byref(value), 1) and value.value == reference
         assert mapped_read(0xa000, C.byref(value), 1) and value.value == 0x42
     stats.update(video=video_hash.hexdigest(), audio=audio_hash.hexdigest(), state_size=state_size)
+    stats["options"] = options
     core.retro_unload_game()
     if mapped_read:
         assert not mapped_read(0xc123, C.byref(value), 1)
@@ -305,6 +315,11 @@ def main():
             if run.returncode:
                 raise RuntimeError(f"{core}: {run.stdout}\n{run.stderr}")
             results.append(json.loads((Path(directory) / "result.json").read_text()))
+    direct_options = results[0].pop("options")
+    proxy_options = results[1].pop("options")
+    assert direct_options and all(proxy_options.get(k) == v for k, v in direct_options.items())
+    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout"}
+    assert set(proxy_options) - set(direct_options) == expected
     assert results[0] == results[1], results
     label = "marker and non-marker-area parity" if marker_test else "direct/proxy parity"
     print(f"Real Gambatte {label} passed:", json.dumps(results[0], sort_keys=True))

@@ -73,3 +73,6 @@ manifest without ROMs or a redistributed backend. It uses the firmware's origina
 Gambatte and keeps the ordinary GBC entry unchanged.
 
 See [possible next features](docs/feature-ideas.md) for prioritized extension ideas.
+
+HUD displays can now be configured independently through Libretro core options,
+with detailed/compact training layouts. See [HUD preferences](docs/hud-options.md).

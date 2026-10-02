@@ -270,12 +270,54 @@ static void preview(const char *path)
     }
     assert(fclose(f)==0); type_hud_clear(&hud);
 }
+static void preferences(enum retro_pixel_format f)
+{
+    size_t size=bpp(f),pitch=240*size;
+    uint8_t frame[240*160*4];memset(frame,0x5a,sizeof(frame));
+    struct type_hud hud={0};struct battle_state s=model(TYPE_NORMAL,TYPE_FLYING);
+    s.main_menu=false;s.fight_menu=true;s.moves[0]=1;s.effectiveness[0]=MOVE_SUPER;
+    const void *out=type_hud_draw_options(&hud,&s,frame,160,144,pitch,f,HUD_TYPES);
+    assert(get(out,pitch,size,146,2)!=get(frame,pitch,size,146,2));
+    assert(get(out,pitch,size,144,104)==get(frame,pitch,size,144,104));
+    out=type_hud_draw_options(&hud,&s,NULL,160,144,pitch,f,HUD_MOVES);assert(out);
+    assert(get(out,pitch,size,146,2)==get(frame,pitch,size,146,2));
+    assert(get(out,pitch,size,144,104)!=get(frame,pitch,size,144,104));
+    out=type_hud_draw_options(&hud,&s,NULL,160,144,pitch,f,0);assert(out);
+    for(unsigned y=0;y<144;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,160*size));
+    assert(!type_hud_draw_options(&hud,&s,NULL,160,144,pitch,f,0));type_hud_clear(&hud);
+    for(unsigned gen=1;gen<=3;gen++){
+        memset(&s,0,sizeof(s));s.training.visible=true;s.training.generation=gen;
+        s.training.nature_known=true;s.training.nature=1;s.training.ability_known=true;s.training.ability=65;
+        strcpy(s.training.ability_name,"OVERGROW");
+        for(unsigned i=0;i<6;i++){s.training.dv[i]=15;s.training.ev[i]=123;}
+        unsigned w=gen==3?240:160,h=gen==3?160:144,left=gen==1?80:0,top=gen==1?72:64;
+        if(gen==3){left=80;top=112;}
+        out=type_hud_draw_options(&hud,&s,frame,w,h,pitch,f,HUD_TRAINING);
+        assert(get(out,pitch,size,left,top)!=get(frame,pitch,size,left,top));
+        if(gen==3)assert(get(out,pitch,size,80,104)==get(frame,pitch,size,80,104));
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_POWER);assert(out);
+        assert(get(out,pitch,size,left,top)==get(frame,pitch,size,left,top));
+        if(gen!=1)assert(get(out,pitch,size,gen==3?160:0,gen==3?148:132)!=get(frame,pitch,size,gen==3?160:0,gen==3?148:132));
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_DETAILS);assert(out);
+        assert(get(out,pitch,size,left,top)==get(frame,pitch,size,left,top));
+        if(gen==3)assert(get(out,pitch,size,80,104)!=get(frame,pitch,size,80,104));
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_COMPACT);assert(out);
+        unsigned rowtop=gen==3?121:top+(gen==2?11:12);
+        for(unsigned y=rowtop;y<rowtop+7;y++)for(unsigned x=left+49;x<left+79;x++)
+            assert(get(out,pitch,size,x,y)==packed(f,0x18202c));
+        out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,0);assert(out);
+        for(unsigned y=0;y<h;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*size));
+        type_hud_clear(&hud);
+    }
+    for(size_t i=0;i<sizeof(frame);i++)assert(frame[i]==0x5a);
+}
 int main(int argc,char **argv)
 {
     check(RETRO_PIXEL_FORMAT_0RGB1555); check(RETRO_PIXEL_FORMAT_RGB565); check(RETRO_PIXEL_FORMAT_XRGB8888);
     for(unsigned f=0;f<3;f++){multigen_pane((enum retro_pixel_format)f,1);multigen_pane((enum retro_pixel_format)f,3);}
     for(unsigned f=0;f<3;f++){hidden_power_pixels((enum retro_pixel_format)f,2);hidden_power_pixels((enum retro_pixel_format)f,3);}
     for(unsigned f=0;f<3;f++)nature_ability_pixels((enum retro_pixel_format)f);
+    for(unsigned f=0;f<3;f++)preferences((enum retro_pixel_format)f);
     if(argc==2) preview(argv[1]);
     puts("M4 badge pixels, formats, source immutability, duplicate updates and cleanup passed");
     return 0;

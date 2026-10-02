@@ -203,7 +203,7 @@ static bool proxy_environment(unsigned cmd, void *data)
 {
     bool captured = cmd == RETRO_ENVIRONMENT_SET_MEMORY_MAPS &&
         memory_view_capture(&memory, data);
-    bool accepted = frontend_environment ? frontend_environment(cmd, data) : false;
+    bool accepted = frontend_environment ? hud_options_register(frontend_environment, cmd, data) : false;
     if (accepted && data && cmd == RETRO_ENVIRONMENT_SET_PIXEL_FORMAT)
         pixel_format = *(const enum retro_pixel_format *)data;
     return accepted || captured;
@@ -216,8 +216,8 @@ static void proxy_video_refresh(const void *data, unsigned width,
         if (game_loaded && profile) {
             /* Sample the RAM belonging to this callback before compositing. */
             update_battle();
-            if (hud_enabled)
-                data = type_hud_draw(&hud, &battle, data, width, height, pitch, pixel_format);
+            data = type_hud_draw_options(&hud, &battle, data, width, height, pitch, pixel_format,
+                hud_enabled ? hud_options_read(frontend_environment) : 0);
         }
         if (marker_enabled)
             data = video_marker_draw(&marker, data, width, height, pitch, pixel_format);
@@ -426,6 +426,7 @@ void retro_deinit(void)
         dlclose(backend.handle);
         memset(&backend, 0, sizeof(backend));
     }
+    hud_options_clear();
     video_marker_clear(&marker);
     marker_enabled = false;
     debug_enabled = false;
@@ -441,6 +442,7 @@ void retro_set_environment(retro_environment_t cb)
         backend.set_environment(cb ? proxy_environment : NULL);
     else
         (void)load_backend();
+    hud_options_fallback(cb);
 }
 
 void retro_set_video_refresh(retro_video_refresh_t cb)

@@ -159,18 +159,19 @@ static void party_details_line(struct type_hud *h,size_t bpp,const struct traini
     if(ability) stats_text(h,bpp,162,105,s->ability_name,0xffffff);
 }
 static void training_cell(struct type_hud *h,size_t bpp,const struct training_stats *s,
-                          unsigned stat,unsigned left,unsigned top,const char *label)
+                          unsigned stat,unsigned left,unsigned top,const char *label,unsigned options)
 {
     stats_text(h,bpp,left+2,top,label,0xc0d0e0);
-    if(s->generation==3 && s->nature_known)
+    if(s->generation==3 && s->nature_known && (options&HUD_DETAILS))
         nature_arrow(h,bpp,gen3_nature_effect(s->nature,stat),left+20,top);
     char value[6];
     snprintf(value,sizeof(value),"%u",(unsigned)s->dv[stat]);
     stats_text(h,bpp,left+39-(unsigned)strlen(value)*6,top,value,0xffffff);
+    if(options&HUD_COMPACT) return;
     snprintf(value,sizeof(value),"%u",(unsigned)s->ev[stat]);
     stats_text(h,bpp,left+79-(unsigned)strlen(value)*6,top,value,0xffffff);
 }
-static void training_table(struct type_hud *h,size_t bpp,const struct training_stats *s)
+static void training_table(struct type_hud *h,size_t bpp,const struct training_stats *s,unsigned options)
 {
     const char *labels[]={"HP","ATK","DEF","SPA","SPD","SPE"};
     if(s->generation==3) {
@@ -180,28 +181,27 @@ static void training_table(struct type_hud *h,size_t bpp,const struct training_s
             pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
         for(unsigned col=0;col<2;col++) {
             unsigned left=80+col*80;
-            stats_text(h,bpp,left+27,113,"IV",0x90c4ff);stats_text(h,bpp,left+49,113,"EV",0x90c4ff);
+            stats_text(h,bpp,left+27,113,"IV",0x90c4ff);if(!(options&HUD_COMPACT)) stats_text(h,bpp,left+49,113,"EV",0x90c4ff);
             for(unsigned row=0;row<3;row++) {
-                unsigned i=col*3+row;training_cell(h,bpp,s,i,left,121+row*10,labels[i]);
+                unsigned i=col*3+row;training_cell(h,bpp,s,i,left,121+row*10,labels[i],options);
             }
         }
-        party_details_line(h,bpp,s);
+
         unsigned total=0;for(unsigned i=0;i<6;i++) total+=s->ev[i];char text[24];
-        snprintf(text,sizeof(text),"EV %u OF 510",total);stats_text(h,bpp,82,152,text,0x90c4ff);
-        hidden_power_row(h,bpp,s,160,148);
+        snprintf(text,sizeof(text),"EV %u OF 510",total);if(!(options&HUD_COMPACT)) stats_text(h,bpp,82,152,text,0x90c4ff);
+
         return;
     }
     unsigned left=s->generation==1 ? 80 : 0,top=s->generation==1 ? 72 : 64;
     for(unsigned y=top;y<144;y++) for(unsigned x=left;x<left+80;x++)
         pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
-    stats_text(h,bpp,left+27,top+2,"DV",0x90c4ff);stats_text(h,bpp,left+49,top+2,s->generation==2 ? "EXP" : "EV",0x90c4ff);
+    stats_text(h,bpp,left+27,top+2,"DV",0x90c4ff);if(!(options&HUD_COMPACT)) stats_text(h,bpp,left+49,top+2,s->generation==2 ? "EXP" : "EV",0x90c4ff);
     const unsigned kanto_order[]={0,1,2,5,3};
     for(unsigned row=0;row<(s->generation==1 ? 5u : 6u);row++) {
         unsigned i=s->generation==1 ? kanto_order[row] : row;
-        training_cell(h,bpp,s,i,left,top+(s->generation==2 ? 11u : 12u)+row*10,s->generation==1 && i==3 ? "SPC" : labels[i]);
+        training_cell(h,bpp,s,i,left,top+(s->generation==2 ? 11u : 12u)+row*10,s->generation==1 && i==3 ? "SPC" : labels[i],options);
     }
-    if(s->generation==2) hidden_power_row(h,bpp,s,left,132);
-    else stats_text(h,bpp,left+2,137,"STAT EXP",0x90c4ff);
+    if(s->generation==1 && !(options&HUD_COMPACT)) stats_text(h,bpp,left+2,137,"STAT EXP",0x90c4ff);
 }
 static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
 {
@@ -210,9 +210,9 @@ static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
     if(!next) return false;
     *buffer=next; *capacity=bytes; return true;
 }
-const void *type_hud_draw(struct type_hud *h, const struct battle_state *state,
+const void *type_hud_draw_options(struct type_hud *h, const struct battle_state *state,
     const void *frame, unsigned width, unsigned height, size_t pitch,
-    enum retro_pixel_format format)
+    enum retro_pixel_format format, unsigned options)
 {
     struct battle_state empty={0};
     if(!state) state=&empty;
@@ -231,7 +231,7 @@ const void *type_hud_draw(struct type_hud *h, const struct battle_state *state,
             h->has_frame=false; h->has_presented=false;
             return NULL;
         }
-        if(h->has_presented && battle_state_equal(&h->presented,state)) return NULL;
+        if(h->has_presented && battle_state_equal(&h->presented,state) && h->presented_options==options) return NULL;
     } else {
         if(!reserve(&h->clean,&h->clean_capacity,bytes)) {
             h->has_frame=false; h->has_presented=false; return frame;
@@ -241,15 +241,25 @@ const void *type_hud_draw(struct type_hud *h, const struct battle_state *state,
         h->width=width; h->height=height; h->pitch=pitch; h->format=format; h->has_frame=true;
     }
     const void *result=frame?frame:h->clean;
-    bool active=fits(state,width,height);
+    bool active=(options&HUD_DEFAULT) && fits(state,width,height);
     if(active && reserve(&h->output,&h->output_capacity,bytes)) {
         for(unsigned y=0;y<height;y++)
             memcpy(h->output+(size_t)y*pitch,h->clean+(size_t)y*pitch,row_bytes);
-        if(state->training.visible) training_table(h,bpp,&state->training);
+        if(state->training.visible) {
+            const struct training_stats *s=&state->training;
+            if(options&HUD_TRAINING) training_table(h,bpp,s,options);
+            if((options&HUD_DETAILS) && s->generation==3) party_details_line(h,bpp,s);
+            if((options&HUD_POWER) && (s->generation==2 || s->generation==3)) {
+                unsigned left=s->generation==3 ? 160 : 0,top=s->generation==3 ? 148 : 132;
+                for(unsigned y=top;y<top+12;y++) for(unsigned x=left;x<left+80;x++)
+                    pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
+                hidden_power_row(h,bpp,s,left,top);
+            }
+        }
         else {
-            badge(h,bpp,state->type1,2);
-            if(state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
-            move_hints(h,bpp,state);
+            if(options&HUD_TYPES) badge(h,bpp,state->type1,2);
+            if((options&HUD_TYPES) && state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
+            if(options&HUD_MOVES) move_hints(h,bpp,state);
         }
         result=h->output;
     } else if(active) {
@@ -257,10 +267,16 @@ const void *type_hud_draw(struct type_hud *h, const struct battle_state *state,
         h->has_presented=false;
         return result;
     }
-    h->presented=*state; h->has_presented=true;
+    h->presented=*state; h->presented_options=options; h->has_presented=true;
     return result;
 }
 void type_hud_clear(struct type_hud *h)
 {
     free(h->clean); free(h->output); memset(h,0,sizeof(*h));
+}
+
+const void *type_hud_draw(struct type_hud *h,const struct battle_state *s,
+    const void *frame,unsigned width,unsigned height,size_t pitch,enum retro_pixel_format format)
+{
+    return type_hud_draw_options(h,s,frame,width,height,pitch,format,HUD_DEFAULT);
 }

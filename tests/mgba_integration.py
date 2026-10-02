@@ -47,6 +47,9 @@ def worker(path, directory):
     core = C.CDLL(path)
     maps, frames, samples, polls = [], [], [], []
     fmt = 0
+    options = {}
+    class Variable(C.Structure):
+        _fields_ = [("key", C.c_char_p), ("value", C.c_char_p)]
     directory_bytes = os.fsencode(directory)
     @ENV
     def environment(cmd, data):
@@ -63,7 +66,13 @@ def worker(path, directory):
         if cmd == 17:
             C.cast(data, C.POINTER(C.c_bool))[0] = False
             return True
-        if cmd == 16:
+        if cmd == 16:  # Legacy option registration must retain every backend default.
+            options.clear()
+            definitions = C.cast(data, C.POINTER(Variable))
+            for i in range(1024):
+                if not definitions[i].key:
+                    break
+                options[definitions[i].key.decode()] = definitions[i].value.decode()
             return True
         if cmd == (36 | 0x10000):
             m = C.cast(data, C.POINTER(Map)).contents
@@ -208,6 +217,7 @@ def worker(path, directory):
     stats = {"frames": len(frames), "polls": len(polls), "geometry": list(frames[-1][1:]),
              "video": hashlib.sha256(b"".join(x[0] for x in frames)).hexdigest(),
              "audio": hashlib.sha256(b"".join(samples)).hexdigest(), "state_size": state_size}
+    stats["options"] = options
     core.retro_unload_game()
     if mapped:
         assert not mapped(0x02000123, C.byref(C.c_uint8()), 1)
@@ -228,6 +238,11 @@ def main():
             if run.returncode:
                 raise RuntimeError(f"{core}: {run.stdout}\n{run.stderr}")
             results.append(json.loads((Path(directory)/"result.json").read_text()))
+    direct_options = results[0].pop("options")
+    proxy_options = results[1].pop("options")
+    assert direct_options and all(proxy_options.get(k) == v for k, v in direct_options.items())
+    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout"}
+    assert set(proxy_options) - set(direct_options) == expected
     assert results[0] == results[1], results
     print("Real mGBA direct/proxy video/audio/RAM/state parity and Emerald decoder/renderer fixture passed", results[0])
 
