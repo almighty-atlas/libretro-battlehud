@@ -64,6 +64,7 @@ struct battle_state battle_decode(const struct game_profile *p,
     struct battle_state s={0};
     if(!p) return s;
     s.training=training_stats_decode(p,read,context);
+    if(p->generation!=2) { s.status=BATTLE_OUTSIDE; return s; }
     s.status=BATTLE_UNAVAILABLE;
     uint8_t mode, ended, starting, switching;
     if(!read || !read(context,p->battle_mode,&mode,1)) return s;

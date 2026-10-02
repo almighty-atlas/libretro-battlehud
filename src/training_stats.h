@@ -6,8 +6,10 @@
 /* Display order: HP, Attack, Defense, Special Attack, Special Defense, Speed. */
 struct training_stats {
     bool visible;
-    uint8_t slot, species, dv[6];
-    uint16_t ev[6]; /* Gen 2 raw stat experience, NOT modern 0..252 EVs. */
+    uint8_t slot, generation;
+    uint16_t species;
+    uint8_t dv[6]; /* DVs in Gen 1/2, IVs in Gen 3. */
+    uint16_t ev[6]; /* Raw stat experience in Gen 1/2, EVs in Gen 3. */
 };
 typedef bool (*training_memory_read)(void *, size_t, void *, size_t);
 struct training_stats training_stats_decode(const struct game_profile *profile,

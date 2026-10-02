@@ -50,7 +50,8 @@ static void pixel(uint8_t *out, size_t pitch, size_t bpp, unsigned x, unsigned y
 static bool valid_type(enum pokemon_type type) { return type>=TYPE_NORMAL && type<=TYPE_FAIRY; }
 static bool fits(const struct battle_state *s, unsigned width, unsigned height)
 {
-    if(s->training.visible) return width==160 && height==144;
+    if(s->training.visible) return s->training.generation==3 ?
+        width==240 && height==160 : (s->training.generation==1 || s->training.generation==2) && width==160 && height==144;
     if(s->status!=BATTLE_ACTIVE || (!s->main_menu && !s->fight_menu) || !s->species || !valid_type(s->type1) ||
        (s->type2!=TYPE_NONE && !valid_type(s->type2))) return false;
     unsigned rows=s->type2!=TYPE_NONE && s->type2!=s->type1 ? 2 : 1;
@@ -120,24 +121,44 @@ static void stats_text(struct type_hud *h,size_t bpp,unsigned left,unsigned top,
                 pixel(h->output,h->pitch,bpp,left+i*6+x,top+y,h->format,rgb);
     }
 }
+static void training_cell(struct type_hud *h,size_t bpp,const struct training_stats *s,
+                          unsigned stat,unsigned left,unsigned top,const char *label)
+{
+    stats_text(h,bpp,left+2,top,label,0xc0d0e0); char value[6];
+    snprintf(value,sizeof(value),"%u",(unsigned)s->dv[stat]);
+    stats_text(h,bpp,left+39-(unsigned)strlen(value)*6,top,value,0xffffff);
+    snprintf(value,sizeof(value),"%u",(unsigned)s->ev[stat]);
+    stats_text(h,bpp,left+79-(unsigned)strlen(value)*6,top,value,0xffffff);
+}
 static void training_table(struct type_hud *h,size_t bpp,const struct training_stats *s)
 {
-    /* Replace only the lower-left OT/ID pane; original stats and upper half stay intact. */
-    for(unsigned y=64;y<144;y++) for(unsigned x=0;x<80;x++)
-        pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
-    stats_text(h,bpp,27,66,"DV",0x90c4ff);
-    stats_text(h,bpp,49,66,"EV",0x90c4ff);
-    const char *labels[6]={"HP","ATK","DEF","SPA","SPD","SPE"};
-    for(unsigned i=0;i<6;i++) {
-        unsigned top=76+i*10;
-        stats_text(h,bpp,2,top,labels[i],0xc0d0e0);
-        char value[6];
-        snprintf(value,sizeof(value),"%u",(unsigned)s->dv[i]);
-        stats_text(h,bpp,39-(unsigned)strlen(value)*6,top,value,0xffffff);
-        snprintf(value,sizeof(value),"%u",(unsigned)s->ev[i]);
-        stats_text(h,bpp,79-(unsigned)strlen(value)*6,top,value,0xffffff);
+    const char *labels[]={"HP","ATK","DEF","SPA","SPD","SPE"};
+    if(s->generation==3) {
+        /* Two three-row columns replace the EXP pane below stats, preserving portrait,
+         * held item, level and all original stat numbers. */
+        for(unsigned y=112;y<160;y++) for(unsigned x=80;x<240;x++)
+            pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
+        for(unsigned col=0;col<2;col++) {
+            unsigned left=80+col*80;
+            stats_text(h,bpp,left+27,113,"IV",0x90c4ff);stats_text(h,bpp,left+49,113,"EV",0x90c4ff);
+            for(unsigned row=0;row<3;row++) {
+                unsigned i=col*3+row;training_cell(h,bpp,s,i,left,122+row*10,labels[i]);
+            }
+        }
+        unsigned total=0;for(unsigned i=0;i<6;i++) total+=s->ev[i];char text[24];
+        snprintf(text,sizeof(text),"EV %u OF 510",total);stats_text(h,bpp,82,152,text,0x90c4ff);
+        return;
     }
-    stats_text(h,bpp,2,137,"STAT EXP",0x90c4ff);
+    unsigned left=s->generation==1 ? 80 : 0,top=s->generation==1 ? 72 : 64;
+    for(unsigned y=top;y<144;y++) for(unsigned x=left;x<left+80;x++)
+        pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
+    stats_text(h,bpp,left+27,top+2,"DV",0x90c4ff);stats_text(h,bpp,left+49,top+2,"EV",0x90c4ff);
+    const unsigned kanto_order[]={0,1,2,5,3};
+    for(unsigned row=0;row<(s->generation==1 ? 5u : 6u);row++) {
+        unsigned i=s->generation==1 ? kanto_order[row] : row;
+        training_cell(h,bpp,s,i,left,top+12+row*10,s->generation==1 && i==3 ? "SPC" : labels[i]);
+    }
+    stats_text(h,bpp,left+2,137,"STAT EXP",0x90c4ff);
 }
 static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
 {

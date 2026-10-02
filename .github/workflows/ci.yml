@@ -48,11 +48,34 @@ jobs:
           build-macos/pokemon_gambatte_libretro.dylib
           build-macos/gambatte-source/gambatte_libretro.dylib --marker
 
+      - name: Check out real mGBA for macos integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: mgba-emu/mgba
+          ref: c3c8e5e813f245028de118a56734e1dc0f35ce2a
+          path: build-macos/mgba-source
+
+      - name: Build real mGBA
+        run: |
+          cmake -S build-macos/mgba-source -B build-macos/mgba-build -DBUILD_LIBRETRO=ON -DBUILD_QT=OFF -DBUILD_SDL=OFF -DSKIP_LIBRARY=ON -DDISABLE_DEPS=ON -DUSE_ELF=OFF -DUSE_LUA=OFF -DENABLE_SCRIPTING=OFF -DBUILD_LTO=OFF -DM_CORE_GB=OFF -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          cmake --build build-macos/mgba-build --target mgba_libretro --parallel 3
+
+      - name: Compare direct mGBA and proxy, verify Emerald fixture
+        run: >-
+          python3 tests/mgba_integration.py
+          build-macos/pokemon_gambatte_libretro.dylib
+          build-macos/mgba-build/mgba_libretro.dylib
+
+      - name: Prepare mGBA wrapper alias
+        run: cp build-macos/pokemon_gambatte_libretro.dylib build-macos/pokemon_mgba_libretro.dylib
+
       - name: Upload macOS test build
         uses: actions/upload-artifact@v4
         with:
-          name: battlehud-macos-arm64-training
-          path: build-macos/pokemon_gambatte_libretro.dylib
+          name: battlehud-macos-arm64-multigen-training
+          path: |
+            build-macos/pokemon_gambatte_libretro.dylib
+            build-macos/pokemon_mgba_libretro.dylib
           if-no-files-found: error
 
   linux:
@@ -90,6 +113,24 @@ jobs:
           python3 tests/gambatte_integration.py
           build/pokemon_gambatte_libretro.so
           build/gambatte-source/gambatte_libretro.so --marker
+
+      - name: Check out real mGBA for linux integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: mgba-emu/mgba
+          ref: c3c8e5e813f245028de118a56734e1dc0f35ce2a
+          path: build/mgba-source
+
+      - name: Build real mGBA
+        run: |
+          cmake -S build/mgba-source -B build/mgba-build -DBUILD_LIBRETRO=ON -DBUILD_QT=OFF -DBUILD_SDL=OFF -DSKIP_LIBRARY=ON -DDISABLE_DEPS=ON -DUSE_ELF=OFF -DUSE_LUA=OFF -DENABLE_SCRIPTING=OFF -DBUILD_LTO=OFF -DM_CORE_GB=OFF
+          cmake --build build/mgba-build --target mgba_libretro --parallel 3
+
+      - name: Compare direct mGBA and proxy, verify Emerald fixture
+        run: >-
+          python3 tests/mgba_integration.py
+          build/pokemon_gambatte_libretro.so
+          build/mgba-build/mgba_libretro.so
 
   h700:
     runs-on: ubuntu-latest

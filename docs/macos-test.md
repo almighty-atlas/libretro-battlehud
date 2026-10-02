@@ -135,3 +135,31 @@ The refined M4 build shows badges in FIGHT / PKMN / PACK / RUN and FIGHT move se
 open PACK → badges disappear, cancel back → badges reappear. Then repeat for PKMN. FIGHT move selection now keeps the badges visible. Diagnostics show `hidden (battle submenu)` while the
 combatant remains available internally. Special contest/mobile menus are not
 enabled by the normal-menu signature.
+
+
+## Gen 1 and Gen 3 training display
+
+Use the new macOS artifact's `pokemon_gambatte_libretro.dylib` with your existing
+Gambatte backend for English Red/Blue, or `pokemon_mgba_libretro.dylib` with an
+installed `mgba_libretro.dylib` backend for English Emerald. Both proxy files are
+identical; their names help keep frontend core entries distinct. Set
+`LIBRETRO_BATTLEHUD_BACKEND` explicitly for each launch; the default adjacent
+backend filename is still Gambatte-specific. Never replace the original backend
+with the wrapper. Use an extracted `.gb`/`.gba` ROM with an exact supported hash.
+
+Example Emerald launch after installing mGBA through RetroArch and extracting
+the downloaded wrapper beside the existing test wrapper:
+
+```sh
+LIBRETRO_BATTLEHUD_DEBUG=1 \
+LIBRETRO_BATTLEHUD_BACKEND="$HOME/Library/Application Support/RetroArch/cores/mgba_libretro.dylib" \
+/Applications/RetroArch.app/Contents/MacOS/RetroArch \
+-L "$HOME/Downloads/ABDM/Compressed/pokemon_mgba_libretro.dylib" \
+"/absolute/path/to/your/Pokemon-Emerald.gba" \
+2>&1 | awk '/battlehud:/ { print; fflush() }'
+```
+
+Confirm the debug profile names Red/Blue/Emerald; compare the table across two
+party members on the first stats page (Red/Blue) or Skills page (Emerald). Check
+that it hides on adjacent pages and party transitions. Crystal regression
+acceptance already passed and need not be repeated unless a regression appears.

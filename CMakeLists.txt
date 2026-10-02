@@ -43,6 +43,11 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 )
 
 if(BUILD_TESTING)
+    add_executable(multigen_training_test tests/multigen_training_test.c src/training_stats.c src/game_profile.c src/battle_decoder.c src/move_effectiveness.c)
+    target_include_directories(multigen_training_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_options(multigen_training_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME multigen_training COMMAND multigen_training_test)
+    set_tests_properties(multigen_training PROPERTIES TIMEOUT 10)
     add_executable(training_stats_test tests/training_stats_test.c src/training_stats.c src/game_profile.c)
     target_include_directories(training_stats_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_options(training_stats_test PRIVATE -Wall -Wextra -Wpedantic)

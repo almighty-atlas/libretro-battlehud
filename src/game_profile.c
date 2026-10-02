@@ -4,7 +4,7 @@
  * pokecrystal11.sym. Dxxx descriptors are physical WRAM bank 1 in Gambatte.
  * Full provenance and acceptance status: docs/reverse-engineering.md. */
 static const struct game_profile crystal_rev1 = {
-    .id = "pokemon-crystal-us-eu-rev1",
+    .id = "pokemon-crystal-us-eu-rev1", .backend_name = "Gambatte", .generation = 2,
     .sha1 = "f2f52230b536214ef7c9924f483392993e226cfb",
     .battle_mode = 0xd22d, .battle_ended = 0xc734,
     .battle_starting = 0xd264, .enemy_switching = 0xc711,
@@ -43,7 +43,36 @@ static const struct game_profile crystal_rev1 = {
         {0xc5eb,5,{0x92,0x8f,0x84,0x84,0x83}} /* SPEED */
     }
 };
+/* pret/pokered symbols 3f618d59edf43918f48f5e558c34e04cb2fc5619: same WRAM in both editions. */
+#define KANTO_PROFILE(name, digest) { \
+    .id=name, .sha1=digest, .backend_name="Gambatte", .generation=1, \
+    .mon_source=0xcc49, .party_index=0xcf92, .party_count=0xd163, \
+    .party_base=0xd16b, .temp_mon=0xcf98, \
+    .stats_labels={ \
+        {0xc455,6,{0x80,0x93,0x93,0x80,0x82,0x8a}}, \
+        {0xc47d,7,{0x83,0x84,0x85,0x84,0x8d,0x92,0x84}}, \
+        {0xc4a5,5,{0x92,0x8f,0x84,0x84,0x83}}, \
+        {0xc4cd,7,{0x92,0x8f,0x84,0x82,0x88,0x80,0x8b}}, \
+        {0xc45e,4,{0x93,0x98,0x8f,0x84}} \
+    } \
+}
+/* TYPE1 label starts at (10,9): C3A0+190 = C45E; checked below separately. */
+static const struct game_profile red = KANTO_PROFILE("pokemon-red-us", "ea9bcae617fdf159b045185467ae58b2e4a48b9a");
+static const struct game_profile blue = KANTO_PROFILE("pokemon-blue-us", "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2");
+/* pret/pokeemerald symbols dba968c67d85caf9595abe12a51ff739d4dc5937.
+ * Function pointers include the Thumb bit. Only a settled party skills page qualifies. */
+static const struct game_profile emerald = {
+    .id="pokemon-emerald-us", .sha1="f3ae088181bf583e55daf962a92bb46f4f1d07b7",
+    .backend_name="mGBA", .generation=3,
+    .gba_party_count=0x020244e9, .gba_party_base=0x020244ec,
+    .summary_pointer=0x0203cf1c, .main_callback=0x030022c4,
+    .summary_callback=0x081bfab5, .tasks=0x03005e00,
+    .input_task=0x081c0511, .palette_fade=0x02037fd4
+};
 const struct game_profile *game_profile_find(const char *sha1)
 {
-    return sha1 && !strcmp(sha1,crystal_rev1.sha1) ? &crystal_rev1 : NULL;
+    const struct game_profile *profiles[]={&crystal_rev1,&red,&blue,&emerald};
+    for(unsigned i=0;sha1 && i<sizeof(profiles)/sizeof(*profiles);i++)
+        if(!strcmp(sha1,profiles[i]->sha1)) return profiles[i];
+    return NULL;
 }

@@ -6,7 +6,8 @@ struct menu_label {
     uint8_t size, tiles[8];
 };
 struct game_profile {
-    const char *id, *sha1;
+    const char *id, *sha1, *backend_name;
+    uint8_t generation;
     uint16_t battle_mode, battle_ended, battle_starting, enemy_switching;
     uint16_t enemy_species, enemy_level, enemy_hp, enemy_max_hp, enemy_type1, enemy_type2;
     uint16_t menu_data_pointer, menu_data_bank, main_menu_pointer;
@@ -19,6 +20,8 @@ struct game_profile {
     uint16_t stats_flags, stats_state, mon_source, party_index, party_count, party_species;
     uint16_t party_base, temp_mon, stats_page_marker;
     struct menu_label stats_labels[5];
+    uint32_t gba_party_count, gba_party_base, summary_pointer;
+    uint32_t main_callback, summary_callback, tasks, input_task, palette_fade;
 };
 const struct game_profile *game_profile_find(const char *sha1);
 #endif

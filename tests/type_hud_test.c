@@ -134,7 +134,7 @@ static void check(enum retro_pixel_format f)
     assert(!hud.clean && !hud.output && !hud.has_frame);
     assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==NULL);
     /* Training pane overlays only x=0..79, y=64..143, even outside battle. */
-    memset(&s,0,sizeof(s)); s.training.visible=true; s.training.species=155;
+    memset(&s,0,sizeof(s)); s.training.visible=true; s.training.generation=2; s.training.species=155;
     for(unsigned i=0;i<6;i++) { s.training.dv[i]=15; s.training.ev[i]=65535; }
     out=type_hud_draw(&hud,&s,input,w,h,pitch,f); assert(out==hud.output);
     for(unsigned y=0;y<h;y++) for(unsigned x=0;x<w;x++)
@@ -152,6 +152,32 @@ static void check(enum retro_pixel_format f)
     s.training.visible=true;
     assert(type_hud_draw(&hud,&s,input,w,h-1,pitch,f)==input);
     type_hud_clear(&hud); free(input); free(original);
+}
+static void multigen_pane(enum retro_pixel_format f,unsigned generation)
+{
+    unsigned w=generation==3 ? 240 : 160,h=generation==3 ? 160 : 144;
+    size_t bpp=f==RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2,pitch=w*bpp+8,bytes=pitch*h;
+    uint8_t *frame=malloc(bytes),*original=malloc(bytes);assert(frame && original);
+    memset(frame,0x5a,bytes);memcpy(original,frame,bytes);
+    struct type_hud hud={0};struct battle_state s={0},hidden={0};
+    s.training.visible=true;s.training.generation=(uint8_t)generation;s.training.species=277;
+    for(unsigned i=0;i<6;i++){s.training.dv[i]=generation==3 ? 31 : 15;s.training.ev[i]=generation==3 ? 85 : 65535;}
+    const void *out=type_hud_draw(&hud,&s,frame,w,h,pitch,f);assert(out==hud.output);
+    unsigned changed=0;
+    for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++) {
+        bool pane=generation==3 ? x>=80 && y>=112 : x>=80 && y>=72;
+        if(!pane)assert(get(out,pitch,bpp,x,y)==get(frame,pitch,bpp,x,y));
+        else if(get(out,pitch,bpp,x,y)!=get(frame,pitch,bpp,x,y))changed++;
+    }
+    assert(changed && !memcmp(frame,original,bytes));
+    assert(get(out,pitch,bpp,80,generation==3 ? 112 : 72)==packed(f,0x18202c));
+    assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==NULL);
+    s.training.slot=1;s.training.dv[0]=0;
+    assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==hud.output);
+    out=type_hud_draw(&hud,&hidden,NULL,w,h,pitch,f);assert(out==hud.clean);
+    for(unsigned y=0;y<h;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*bpp));
+    assert(type_hud_draw(&hud,&s,frame,w-1,h,pitch,f)==frame);
+    type_hud_clear(&hud);free(frame);free(original);
 }
 static void preview(const char *path)
 {
@@ -171,6 +197,7 @@ static void preview(const char *path)
 int main(int argc,char **argv)
 {
     check(RETRO_PIXEL_FORMAT_0RGB1555); check(RETRO_PIXEL_FORMAT_RGB565); check(RETRO_PIXEL_FORMAT_XRGB8888);
+    for(unsigned f=0;f<3;f++){multigen_pane((enum retro_pixel_format)f,1);multigen_pane((enum retro_pixel_format)f,3);}
     if(argc==2) preview(argv[1]);
     puts("M4 badge pixels, formats, source immutability, duplicate updates and cleanup passed");
     return 0;

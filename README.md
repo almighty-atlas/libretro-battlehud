@@ -37,7 +37,9 @@ See [profiles](docs/profiles.md) and [address provenance](docs/reverse-engineeri
 M3 interactive Mac acceptance and M4 text-badge readability/main-menu visibility passed.
 Pixel icons and move hints passed user-reported Mac visual acceptance.
 The third party stats tab now includes a DV/stat-experience table;
-see [training stats](docs/training-stats.md). Its Mac acceptance is pending.
+see [training stats](docs/training-stats.md). Its Crystal Mac acceptance passed. English Red/Blue (Gambatte) and Emerald (mGBA)
+now have generation-specific training tables; interactive acceptance is pending.
+Type icons and FIGHT hints remain Crystal-only.
 See [move-effectiveness rules and symbols](docs/move-effectiveness.md).
 Set `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` to disable badges for comparison.
 M0–M3 have passed desktop checks, including user-reported interactive Mac tests; see [validation status](docs/validation.md).
@@ -64,3 +66,5 @@ The isolated [NextUI H700 PBH test package](docs/nextui-package.md) is prepared 
 M5; physical-device acceptance remains pending. CI publishes the package ZIP and
 manifest without ROMs or a redistributed backend. It uses the firmware's original
 Gambatte and keeps the ordinary GBC entry unchanged.
+
+See [possible next features](docs/feature-ideas.md) for prioritized extension ideas.

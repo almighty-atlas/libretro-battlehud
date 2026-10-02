@@ -36,3 +36,15 @@ M3 interactive Crystal decoder acceptance passed on the user's Mac; see
 
 FIGHT move slots, PP, Disable, DVs and Foresight are decoded by the same
 recognized Crystal profile; see [move-effectiveness provenance](move-effectiveness.md).
+
+
+## Training-only profiles
+
+| Edition | SHA-1 | Backend | Page |
+| --- | --- | --- | --- |
+| Red US | ea9bcae617fdf159b045185467ae58b2e4a48b9a | Gambatte | First stats page |
+| Blue US | d7037c83e1ae5b39bde3c30787637ba1d4c48ce2 | Gambatte | First stats page |
+| Emerald US | f3ae088181bf583e55daf962a92bb46f4f1d07b7 | mGBA | Pokémon Skills (second tab) |
+
+Only the party DV/IV/EV display is enabled by these profiles. Battle icons and
+FIGHT hints remain Crystal-only. See [training details](training-stats.md).

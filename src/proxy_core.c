@@ -104,7 +104,7 @@ static bool decoder_read(void *context, size_t address, void *out, size_t size)
         return false;
     size_t length = backend.get_memory_size(RETRO_MEMORY_SYSTEM_RAM);
     const unsigned char *ram = backend.get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
-    if (!ram || length < 0x8000)
+    if (!ram || length < (profile && profile->generation==1 ? 0x2000u : 0x8000u))
         return false;
     memcpy(out, ram + address - 0xc000, size);
     return true;
@@ -148,8 +148,9 @@ static void update_battle(void)
     }
     if(debug_enabled && !training_stats_equal(&battle.training,&next.training)) {
         if(next.training.visible) {
-            fprintf(stderr,"battlehud: stats party=%u species=%u order=HP/ATK/DEF/SPA/SPD/SPE DV=",
-                    (unsigned)next.training.slot+1,(unsigned)next.training.species);
+            fprintf(stderr,"battlehud: stats party=%u species=%u order=HP/ATK/DEF/SPA/SPD/SPE %s=",
+                    (unsigned)next.training.slot+1,(unsigned)next.training.species,
+                    next.training.generation==3 ? "IV" : "DV");
             for(unsigned i=0;i<6;i++) fprintf(stderr,"%s%u",i?"/":"",(unsigned)next.training.dv[i]);
             fprintf(stderr," EV=");
             for(unsigned i=0;i<6;i++) fprintf(stderr,"%s%u",i?"/":"",(unsigned)next.training.ev[i]);
@@ -171,7 +172,9 @@ static void detect_profile(const struct retro_game_info *game)
     } else if (game && !game->data) {
         (void)sha1_file(game->path, hash);
     }
-    profile = gambatte_memory_layout ? game_profile_find(hash) : NULL;
+    profile = game_profile_find(hash);
+    if(profile && (!info.library_name || strcmp(info.library_name,profile->backend_name)))
+        profile = NULL;
     clear_battle();
     if (debug_enabled) {
         if (profile)

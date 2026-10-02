@@ -1,4 +1,4 @@
-# Party DVs and stat experience on Crystal's third stats tab
+# Party training values for Gen 1, 2 and 3
 
 The blue (third) stats page shows a lower-left DV/EV table for the selected
 player-party Pokémon. It replaces the trainer ID/OT pane at x=0..79, y=64..143;
@@ -62,6 +62,74 @@ party data, mismatched temporary data, missing reads, stale labels, eggs and
 other pages/sources. Pixel tests cover all three formats, the exact pane bounds,
 header/value pixels, immutable input, duplicate updates and pane removal.
 Training/decoder/renderer tests pass ASan+UBSan. The synthetic renderer preview
-was visually inspected. Interactive Crystal Mac acceptance of this new table
-and physical H700 acceptance remain pending. The user accepted the preceding
+was visually inspected. Interactive Crystal Mac acceptance passed: the user verified the table changes
+with each selected Pokémon. Physical H700 acceptance remains pending. The user accepted the preceding
 pixel type icons and FIGHT move hints before this change.
+
+
+## English Red and Blue (Gen 1)
+
+Supported original SHA-1s: Red `ea9bcae617fdf159b045185467ae58b2e4a48b9a`,
+Blue `d7037c83e1ae5b39bde3c30787637ba1d4c48ce2`. Both require Gambatte.
+The first stats page has five rows: HP, ATK, DEF, SPE, SPC. Special is a single
+stat in Gen 1; values remain DVs 0–15 and raw stat experience 0–65535.
+The table replaces the lower-right types/OT/ID pane at x=80..159, y=72..143,
+leaving all original stat numbers, name, portrait, HP and level intact.
+Source must be the player's party, all four stat labels and TYPE signature must
+be present, and the displayed 44-byte structure must equal the selected party
+entry. The moves/EXP page, level-up popups, boxes and opponents do not qualify.
+Gambatte's non-CGB 8 KiB SYSTEM_RAM layout is explicitly supported in the fallback.
+
+Pinned source: [pret/pokered](https://github.com/pret/pokered/blob/d2704a63c26f9ba046ade877445216b3de0519a4/engine/pokemon/status_screen.asm),
+[symbols](https://github.com/pret/pokered/blob/3f618d59edf43918f48f5e558c34e04cb2fc5619/pokered.sym).
+Red/Blue WRAM: party count D163, base D16B, stride 44; selected slot CF92,
+source CC49; loaded mon CF98; DVs CFB3, big-endian stat experience CFA9..CFB2.
+Stats tile signatures C455/C47D/C4A5/C4CD, TYPE at C45E; tilemap C3A0.
+
+## English Emerald (Gen 3)
+
+Supported original SHA-1: `f3ae088181bf583e55daf962a92bb46f4f1d07b7`, backend **mGBA**.
+This extends the party training display only. Crystal battle type/move decoding
+is never applied to a Gen 1/3 profile. No other GBA core or edition is enabled.
+
+The Pokémon Skills page (second tab) gets two three-row columns for HP/ATK/DEF
+and SPA/SPD/SPE. IVs are 0–31; stored EVs are 0–255, with a 510 total limit.
+The footer shows total EVs out of 510. A 255 counter is shown faithfully rather
+than capped at 252. The overlay replaces x=80..239, y=112..159 (EXP/next-level
+pane), preserving the portrait, nickname, level, held item and original stats.
+It requires exact 240x160 software video, an active settled summary input task,
+summary callback, no palette fade, Skills page, party list and valid slot/count.
+The displayed 100-byte mon must exactly match the corresponding player-party mon.
+Eggs, Bad Eggs, boxes, other pages, transitions and corrupt data are hidden.
+
+The 48 encrypted bytes are copied locally and XOR-decoded with PID XOR OT ID.
+PID modulo 24 determines the four block positions; the 16-bit checksum must
+match. Six byte EVs and six 5-bit IVs are reordered to the displayed stat order.
+No game RAM, save data or ROM is changed by the decoder.
+
+Pinned source [pret/pokeemerald](https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/src/pokemon_summary_screen.c),
+[Pokémon layout](https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/include/pokemon.h),
+[encryption and permutation](https://github.com/pret/pokeemerald/blob/731ad5bfd6e6f265508d0efcca0ba42f9dcf5881/src/pokemon.c),
+[symbols](https://github.com/pret/pokeemerald/blob/dba968c67d85caf9595abe12a51ff739d4dc5937/pokeemerald.sym).
+Party count 020244E9, base 020244EC, stride 100; summary pointer 0203CF1C;
+gMain.callback2 030022C4 must equal 081BFAB5; gTasks 03005E00 (16 × 40),
+active input function 081C0511; gPaletteFade 02037FD4, active bit 7 of byte 7.
+Summary monList +0, currentMon +0C, mode/isBox/slot/max/page +40BC..40C0.
+Pointers must stay aligned and within EWRAM for every required read.
+
+mGBA provides explicit EWRAM/IWRAM descriptors. Their mappings are verified from
+[pinned Libretro adapter](https://github.com/mgba-emu/mgba/blob/c3c8e5e813f245028de118a56734e1dc0f35ce2a/src/platform/libretro/libretro.c).
+There is no guessed GBA SYSTEM_RAM address fallback. Missing maps hide the overlay.
+
+## New automated coverage and acceptance
+
+Both Red/Blue profiles, all party slots and HP-DV parity combinations; all 24
+Emerald encrypted arrangements across all six slots; shared Special, distinct
+modern Special stats, checksum failures, eggs, invalid pointers, EV totals and
+page/task/fade/identity guards are covered. Renderer checks all three pixel
+formats, exact generation-specific bounds, unchanged source pixels, cache
+updates and removal. CI builds real pinned Gambatte and mGBA on Linux and Apple
+Silicon and compares direct/proxy emulation using original test programs.
+Emerald-shaped mapped RAM and renderer fixtures do not replace manual testing
+with Emerald. Red/Blue and Emerald interactive macOS acceptance remains pending.
+The existing NextUI PBH package still launches Gambatte; it cannot launch Emerald.
