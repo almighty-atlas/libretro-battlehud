@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure native Apple Silicon build
+        run: >-
+          cmake -S . -B build-macos
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_ARCHITECTURES=arm64
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+
+      - name: Build macOS proxy
+        run: cmake --build build-macos --parallel 3
+
+      - name: Test macOS proxy
+        run: ctest --test-dir build-macos --output-on-failure
+
+      - name: Verify native arm64 library
+        run: lipo build-macos/pokemon_gambatte_libretro.dylib -verify_arch arm64
+
+      - name: Check out real Gambatte for macOS integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: libretro/gambatte-libretro
+          ref: d9d6cd06382d1ced30de34d56d3609452323dab1
+          path: build-macos/gambatte-source
+
+      - name: Build native macOS Gambatte
+        run: make -C build-macos/gambatte-source -j3 platform=osx CC=clang CXX=clang++ ARCHFLAGS="-arch arm64"
+
+      - name: Compare direct macOS Gambatte and proxy
+        run: >-
+          python3 tests/gambatte_integration.py
+          build-macos/pokemon_gambatte_libretro.dylib
+          build-macos/gambatte-source/gambatte_libretro.dylib
+
+      - name: Verify M1 marker with real macOS Gambatte
+        run: >-
+          python3 tests/gambatte_integration.py
+          build-macos/pokemon_gambatte_libretro.dylib
+          build-macos/gambatte-source/gambatte_libretro.dylib --marker
+
+      - name: Check out real mGBA for macos integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: mgba-emu/mgba
+          ref: c3c8e5e813f245028de118a56734e1dc0f35ce2a
+          path: build-macos/mgba-source
+
+      - name: Build real mGBA
+        run: |
+          cmake -S build-macos/mgba-source -B build-macos/mgba-build -DBUILD_LIBRETRO=ON -DBUILD_QT=OFF -DBUILD_SDL=OFF -DSKIP_LIBRARY=ON -DDISABLE_DEPS=ON -DUSE_ELF=OFF -DUSE_LUA=OFF -DENABLE_SCRIPTING=OFF -DBUILD_LTO=OFF -DM_CORE_GB=OFF -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          cmake --build build-macos/mgba-build --target mgba_libretro --parallel 3
+
+      - name: Compare direct mGBA and proxy, verify Emerald fixture
+        run: >-
+          python3 tests/mgba_integration.py
+          build-macos/pokemon_gambatte_libretro.dylib
+          build-macos/mgba-build/mgba_libretro.dylib
+
+      - name: Prepare mGBA wrapper alias
+        run: cp build-macos/pokemon_gambatte_libretro.dylib build-macos/pokemon_mgba_libretro.dylib
+
+      - name: Upload macOS test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: battlehud-macos-arm64-multigen-training
+          path: |
+            build-macos/pokemon_gambatte_libretro.dylib
+            build-macos/pokemon_mgba_libretro.dylib
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Check out real Gambatte for integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: libretro/gambatte-libretro
+          ref: d9d6cd06382d1ced30de34d56d3609452323dab1
+          path: build/gambatte-source
+
+      - name: Build real Gambatte
+        run: make -C build/gambatte-source -j2 platform=unix
+
+      - name: Compare direct Gambatte and proxy using original test ROM
+        run: >-
+          python3 tests/gambatte_integration.py
+          build/pokemon_gambatte_libretro.so
+          build/gambatte-source/gambatte_libretro.so
+
+      - name: Verify M1 marker with real Gambatte
+        run: >-
+          python3 tests/gambatte_integration.py
+          build/pokemon_gambatte_libretro.so
+          build/gambatte-source/gambatte_libretro.so --marker
+
+      - name: Check out real mGBA for linux integration testing
+        uses: actions/checkout@v4
+        with:
+          repository: mgba-emu/mgba
+          ref: c3c8e5e813f245028de118a56734e1dc0f35ce2a
+          path: build/mgba-source
+
+      - name: Build real mGBA
+        run: |
+          cmake -S build/mgba-source -B build/mgba-build -DBUILD_LIBRETRO=ON -DBUILD_QT=OFF -DBUILD_SDL=OFF -DSKIP_LIBRARY=ON -DDISABLE_DEPS=ON -DUSE_ELF=OFF -DUSE_LUA=OFF -DENABLE_SCRIPTING=OFF -DBUILD_LTO=OFF -DM_CORE_GB=OFF
+          cmake --build build/mgba-build --target mgba_libretro --parallel 3
+
+      - name: Compare direct mGBA and proxy, verify Emerald fixture
+        run: >-
+          python3 tests/mgba_integration.py
+          build/pokemon_gambatte_libretro.so
+          build/mgba-build/mgba_libretro.so
+
+  h700:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/loveretro/h700-toolchain:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure with NextUI H700 toolchain
+        run: >-
+          cmake -S . -B build-h700
+          -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE"
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_FLAGS=-mcpu=cortex-a53
+          -DBUILD_TESTING=OFF
+
+      - name: Build H700 proxy
+        run: cmake --build build-h700 --parallel 2
+
+      - name: Verify 64-bit AArch64 shared library
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+          data = Path('build-h700/pokemon_gambatte_libretro.so').read_bytes()
+          assert data[:6] == b'\x7fELF\x02\x01', 'Expected ELF64 little-endian'
+          assert struct.unpack_from('<HH', data, 16) == (3, 183), 'Expected AArch64 shared object'
+          PY
+
+      - name: Upload H700 test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: battlehud-h700-training
+          path: build-h700/pokemon_gambatte_libretro.so
+          if-no-files-found: error
+
+      - name: Build isolated NextUI H700 test Pak
+        run: >-
+          python3 scripts/package_nextui.py
+          --core build-h700/pokemon_gambatte_libretro.so
+          --output build-h700/package/battlehud-nextui-h700.zip
+          --commit "$GITHUB_SHA"
+
+      - name: Upload NextUI H700 test Pak
+        uses: actions/upload-artifact@v4
+        with:
+          name: battlehud-nextui-h700-pak
+          path: build-h700/package/
+          if-no-files-found: error
