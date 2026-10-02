@@ -75,3 +75,23 @@ original ROM writing $6D to CPU $C123; the normalized read is compared with the
 backend SYSTEM_RAM byte at offset $123. SRAM, save-state restore, audio and video
 parity are checked alongside it. No commercial ROM or Pokémon RAM decoding is
 needed for this test. Crystal profile recognition and battle decoding remain M3.
+
+
+## M3 Crystal decoder — interactive acceptance pending
+
+ROM recognition uses SHA-1, with one compiled Crystal USA/Europe Rev. 1 profile.
+A pure decoder consumes an abstract read-only memory callback. Unknown ROMs and
+invalid/unavailable state yield an empty enemy model; normal emulator operation
+continues. No final HUD is drawn at this milestone.
+
+Automated coverage adds known SHA-1 vectors (including multi-block streaming and
+file input) and battle fixtures for single/dual types, wild/trainer battles,
+opponent changes, battle end, restore-shaped snapshots and malformed data.
+The original GBC ROM integration test checks physical bank-1 reads and decodes a
+literal Pidgey fixture through real Gambatte while confirming production profile
+selection rejects the synthetic ROM. The suite now contains 12 CTest cases.
+
+These checks do not mean the six interactive M3 battle cases are passed. Needed
+on the user's Mac: recognized hash, single/dual types, wild/trainer battle,
+opponent switch, battle end, and restoration with no stale enemy model.
+[Reverse-engineering notes](reverse-engineering.md) preserve sources and limits.

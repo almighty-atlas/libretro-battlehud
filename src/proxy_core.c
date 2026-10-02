@@ -3,6 +3,8 @@
 #include "libretro.h"
 #include "video_marker.h"
 #include "memory_view.h"
+#include "battle_decoder.h"
+#include "sha1.h"
 
 #include <dlfcn.h>
 #include <limits.h>
@@ -80,6 +82,83 @@ static struct video_marker marker;
 static struct memory_view memory;
 static bool game_loaded;
 static bool marker_enabled;
+static bool debug_enabled;
+static bool gambatte_memory_layout;
+static const struct game_profile *profile;
+static struct battle_state battle;
+
+static bool decoder_read(void *context, size_t address, void *out, size_t size)
+{
+    (void)context;
+    if (!game_loaded)
+        return false;
+    if (memory_view_read(&memory, address, out, size))
+        return true;
+    /* Explicit Gambatte fallback: fixed WRAM banks 0/1 at region offsets 0/0x1000.
+     * This mapping is verified against its source; not a generic CPU-base guess. */
+    if (!gambatte_memory_layout || address < 0xc000 || address >= 0xe000 ||
+        !size || size > 0xe000 - address)
+        return false;
+    size_t length = backend.get_memory_size(RETRO_MEMORY_SYSTEM_RAM);
+    const unsigned char *ram = backend.get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
+    if (!ram || length < 0x8000)
+        return false;
+    memcpy(out, ram + address - 0xc000, size);
+    return true;
+}
+
+static void clear_battle(void)
+{
+    memset(&battle, 0, sizeof(battle));
+    if (profile)
+        battle.status = BATTLE_UNAVAILABLE;
+}
+
+static void update_battle(void)
+{
+    struct battle_state next = battle_decode(profile, decoder_read, NULL);
+    if (debug_enabled && !battle_state_equal(&battle, &next)) {
+        if (next.status == BATTLE_ACTIVE)
+            fprintf(stderr, "battlehud: %s species=%u types=%s%s%s raw=%02x/%02x\n",
+                    next.mode == 1 ? "wild" : "trainer", (unsigned)next.species,
+                    pokemon_type_name(next.type1), next.type2 ? "/" : "",
+                    next.type2 ? pokemon_type_name(next.type2) : "",
+                    (unsigned)next.raw_type1, (unsigned)next.raw_type2);
+        else {
+            const char *reason = next.status == BATTLE_OUTSIDE ? "outside battle" :
+                next.status == BATTLE_TRANSITION ? "battle transition" :
+                next.status == BATTLE_UNAVAILABLE ? "memory unavailable" :
+                next.status == BATTLE_INVALID ? "invalid battle data" : "unsupported game";
+            fprintf(stderr, "battlehud: hidden (%s)\n", reason);
+        }
+    }
+    battle = next;
+}
+
+static void detect_profile(const struct retro_game_info *game)
+{
+    char hash[41] = {0};
+    struct retro_system_info info = {0};
+    backend.get_system_info(&info);
+    gambatte_memory_layout = info.library_name && !strcmp(info.library_name, "Gambatte");
+    if (game && game->data && game->size && game->size <= 32 * 1024 * 1024) {
+        struct sha1_context sha;
+        sha1_init(&sha); sha1_update(&sha, game->data, game->size); sha1_final(&sha, hash);
+    } else if (game && !game->data) {
+        (void)sha1_file(game->path, hash);
+    }
+    profile = gambatte_memory_layout ? game_profile_find(hash) : NULL;
+    clear_battle();
+    if (debug_enabled) {
+        if (profile)
+            fprintf(stderr, "battlehud: profile=%s sha1=%s backend=%s %s\n",
+                    profile->id, hash, info.library_name,
+                    info.library_version ? info.library_version : "unknown");
+        else
+            fprintf(stderr, "battlehud: unsupported game/backend sha1=%s; decoder disabled\n",
+                    hash[0] ? hash : "unavailable");
+    }
+}
 static enum retro_pixel_format pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 
 static bool proxy_environment(unsigned cmd, void *data)
@@ -281,6 +360,8 @@ void retro_init(void)
 {
     const char *enabled = getenv("LIBRETRO_BATTLEHUD_TEST_MARKER");
     marker_enabled = enabled && strcmp(enabled, "1") == 0;
+    enabled = getenv("LIBRETRO_BATTLEHUD_DEBUG");
+    debug_enabled = enabled && strcmp(enabled, "1") == 0;
     if (load_backend())
         backend.init();
 }
@@ -288,6 +369,9 @@ void retro_init(void)
 void retro_deinit(void)
 {
     game_loaded = false;
+    profile = NULL;
+    gambatte_memory_layout = false;
+    clear_battle();
     memory_view_clear(&memory);
     /* Teardown must not load a core that never became available. */
     if (backend.handle) {
@@ -297,6 +381,7 @@ void retro_deinit(void)
     }
     video_marker_clear(&marker);
     marker_enabled = false;
+    debug_enabled = false;
     pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 }
 
@@ -397,14 +482,18 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 
 void retro_reset(void)
 {
+    clear_battle();
     if (load_backend())
         backend.reset();
 }
 
 void retro_run(void)
 {
-    if (load_backend())
+    if (load_backend()) {
         backend.run();
+        if (game_loaded && profile)
+            update_battle();
+    }
 }
 
 size_t retro_serialize_size(void)
@@ -419,7 +508,12 @@ bool retro_serialize(void *data, size_t size)
 
 bool retro_unserialize(const void *data, size_t size)
 {
-    return load_backend() && backend.unserialize(data, size);
+    bool restored = load_backend() && backend.unserialize(data, size);
+    if (restored && game_loaded && profile) {
+        clear_battle();
+        update_battle();
+    }
+    return restored;
 }
 
 void retro_cheat_reset(void)
@@ -437,10 +531,15 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
 bool retro_load_game(const struct retro_game_info *game)
 {
     game_loaded = false;
+    profile = NULL;
+    gambatte_memory_layout = false;
+    clear_battle();
     memory_view_clear(&memory);
     game_loaded = load_backend() && backend.load_game(game);
     if (!game_loaded)
         memory_view_clear(&memory);
+    else
+        detect_profile(game);
     return game_loaded;
 }
 
@@ -449,6 +548,9 @@ bool retro_load_game_special(unsigned game_type,
                              size_t num_info)
 {
     game_loaded = false;
+    profile = NULL;
+    gambatte_memory_layout = false;
+    clear_battle();
     memory_view_clear(&memory);
     game_loaded = load_backend() &&
         backend.load_game_special(game_type, info, num_info);
@@ -460,6 +562,9 @@ bool retro_load_game_special(unsigned game_type,
 void retro_unload_game(void)
 {
     game_loaded = false;
+    profile = NULL;
+    gambatte_memory_layout = false;
+    clear_battle();
     memory_view_clear(&memory);
     if (load_backend())
         backend.unload_game();
@@ -500,4 +605,13 @@ bool battlehud_read_region(unsigned id, size_t offset, void *out, size_t size)
         return false;
     memcpy(out, data + offset, size);
     return true;
+}
+
+/* Validation interface; same-thread callers receive a value snapshot, never RAM. */
+bool battlehud_get_battle_state(struct battle_state *out)
+{
+    if (!out)
+        return false;
+    *out = battle;
+    return game_loaded && profile != NULL;
 }

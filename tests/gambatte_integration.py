@@ -15,6 +15,12 @@ class Game(C.Structure):
                 ("size", C.c_size_t), ("meta", C.c_char_p)]
 
 
+class BattleState(C.Structure):
+    _fields_ = [("status", C.c_int), ("mode", C.c_uint8), ("species", C.c_uint16),
+                ("type1", C.c_int), ("type2", C.c_int),
+                ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8)]
+
+
 class Info(C.Structure):
     _fields_ = [("name", C.c_char_p), ("version", C.c_char_p),
                 ("extensions", C.c_char_p), ("fullpath", C.c_bool),
@@ -26,6 +32,7 @@ VIDEO = C.CFUNCTYPE(None, C.c_void_p, C.c_uint, C.c_uint, C.c_size_t)
 SAMPLE = C.CFUNCTYPE(None, C.c_int16, C.c_int16)
 BATCH = C.CFUNCTYPE(C.c_size_t, C.c_void_p, C.c_size_t)
 POLL = C.CFUNCTYPE(None)
+READ = C.CFUNCTYPE(C.c_bool, C.c_void_p, C.c_size_t, C.c_void_p, C.c_size_t)
 INPUT = C.CFUNCTYPE(C.c_int16, C.c_uint, C.c_uint, C.c_uint, C.c_uint)
 
 
@@ -115,9 +122,19 @@ def worker(core_path, directory):
     rom = bytearray(32768)
     rom[0x100:0x103] = bytes.fromhex("c3 50 01")  # JP $0150
     rom[0x134:0x13f] = b"BATTLEHUD00"
+    rom[0x143] = 0x80  # GBC-compatible: test physical WRAM bank 1 as well.
     rom[0x147], rom[0x149] = 3, 2  # MBC1 + RAM + battery; 8 KiB SRAM.
     # Enable SRAM, store $42, write $6D to CPU RAM $C123, set LCD, then loop. No commercial assets.
     code = bytes.fromhex("3e 0a ea 00 00 3e 42 ea 00 a0 3e 6d ea 23 c1 3e e4 ea 47 ff 3e 91 ea 40 ff 18 fe")
+    # Literal Crystal-shaped fixture: wild Pidgey, Normal/Flying, level 5, HP 20.
+    # This original ROM remains unrecognized by the production profile gate.
+    fixture = {0xc734: 0, 0xc711: 0, 0xd264: 0, 0xd22d: 1, 0xd206: 16,
+               0xd213: 5, 0xd216: 0, 0xd217: 20, 0xd218: 0, 0xd219: 20,
+               0xd224: 0, 0xd225: 2}
+    writes = bytes.fromhex("3e 01 ea 70 ff")  # SVBK = 1
+    for address, value in fixture.items():
+        writes += bytes([0x3e, value, 0xea, address & 255, address >> 8])
+    code = code[:-2] + writes + bytes.fromhex("18 fe")
     rom[0x150:0x150 + len(code)] = code
     checksum = 0
     for byte in rom[0x134:0x14d]:
@@ -160,6 +177,28 @@ def worker(core_path, directory):
         assert not mapped_read(0xdeadbeef, C.byref(value), 1) and value.value == 0x99
         assert not region_read(2, core.retro_get_memory_size(2), C.byref(value), 1)
     stats["ram_probe"] = reference
+    # Independent actual-emulator fixture check, including the bank-1 addresses.
+    assert core.retro_get_memory_size(2) == 0x8000
+    for address, expected in fixture.items():
+        assert C.c_uint8.from_address(ram + address - 0xc000).value == expected
+    expected_battle = [3, 1, 16, 1, 10, 0, 2]  # ACTIVE/wild/Pidgey/Normal/Flying
+    if mapped_read:
+        @READ
+        def read_fixture(context, address, destination, length):
+            return mapped_read(address, destination, length)
+        find = core.game_profile_find
+        find.argtypes, find.restype = [C.c_char_p], C.c_void_p
+        decode = core.battle_decode
+        decode.argtypes, decode.restype = [C.c_void_p, READ, C.c_void_p], BattleState
+        snapshot = decode(find(b"f2f52230b536214ef7c9924f483392993e226cfb"), read_fixture, None)
+        actual = [snapshot.status, snapshot.mode, snapshot.species, snapshot.type1,
+                  snapshot.type2, snapshot.raw_type1, snapshot.raw_type2]
+        assert actual == expected_battle, actual
+        getter = core.battlehud_get_battle_state
+        getter.argtypes, getter.restype = [C.POINTER(BattleState)], C.c_bool
+        assert not getter(C.byref(snapshot)), "original ROM must stay unsupported"
+        assert snapshot.status == 0 and snapshot.species == 0
+    stats["battle_fixture"] = expected_battle
 
     core.retro_serialize_size.restype = C.c_size_t
     state_size = core.retro_serialize_size()

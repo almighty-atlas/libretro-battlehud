@@ -77,3 +77,33 @@ The default M0 mode renders no marker. To test M1, prefix the launch command wit
 white rectangle in the top-right corner of the game image. There is no type HUD yet.
 After a successful interactive desktop test, M1 can be developed and checked on
 the Mac while H700 device validation remains explicitly outstanding.
+
+
+## M3 terminal diagnostics
+
+Use the `battlehud-macos-arm64-m3` artifact from the M3 CI run. Replace the previous
+wrapper library after quitting RetroArch; keep the original Gambatte backend.
+Then start with `LIBRETRO_BATTLEHUD_DEBUG=1` (the marker is optional):
+
+```sh
+LIBRETRO_BATTLEHUD_DEBUG=1 \
+LIBRETRO_BATTLEHUD_BACKEND="$HOME/Library/Application Support/RetroArch/cores/gambatte_libretro.dylib" \
+  /Applications/RetroArch.app/Contents/MacOS/RetroArch \
+  -L "$HOME/Downloads/ABDM/Compressed/pokemon_gambatte_libretro.dylib" \
+  "$HOME/Downloads/battlehud-test/Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc"
+```
+
+Expected selection: `profile=pokemon-crystal-us-eu-rev1` with SHA-1
+`f2f52230b536214ef7c9924f483392993e226cfb`. An unsupported hash disables decoding;
+do not force a profile. Check the actual game file with:
+
+```sh
+shasum -a 1 "$HOME/Downloads/battlehud-test/Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc"
+```
+
+At a wild Rattata, expect `wild species=19 types=NORMAL raw=00/00`.
+A Pidgey should report `wild species=16 types=NORMAL/FLYING raw=00/02`.
+Log entries appear on changes, not every frame. After battle, expect
+`hidden (outside battle)`. Start/switch/faint transitions can temporarily hide the
+model. Capture the profile line and observed enemy line first; trainer switching
+and save-state restoration are later interactive checks. Type badges arrive in M4.

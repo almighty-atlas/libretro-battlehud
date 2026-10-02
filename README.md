@@ -28,8 +28,12 @@ Development starts on a feature branch and will keep the wrapper transparent bef
 ## Current status and development
 
 PR #1 implements the M0 transparent proxy, M1 opt-in video test marker and
-M2 read-only memory adapter for bounded Gambatte CPU mappings and raw regions.
-Pokémon decoding and the type HUD are not implemented yet.
+M2 read-only memory adapter, plus an M3 Crystal USA/Europe Rev. 1 battle decoder.
+M3 exposes terminal diagnostics; the type HUD is still M4.
+Only SHA-1 `f2f52230b536214ef7c9924f483392993e226cfb` selects the Crystal profile.
+Enable `LIBRETRO_BATTLEHUD_DEBUG=1` to see profile selection and battle changes.
+See [profiles](docs/profiles.md) and [address provenance](docs/reverse-engineering.md).
+Interactive M3 Crystal acceptance is pending.
 M0 and M1 have passed user-reported interactive Mac tests; see [validation status](docs/validation.md).
 
 Set `LIBRETRO_BATTLEHUD_TEST_MARKER=1` when launching the frontend for an 8×8 white

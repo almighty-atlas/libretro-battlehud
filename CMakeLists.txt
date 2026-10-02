@@ -12,6 +12,9 @@ add_library(pokemon_gambatte_libretro SHARED
     src/proxy_core.c
     src/video_marker.c
     src/memory_view.c
+    src/sha1.c
+    src/game_profile.c
+    src/battle_decoder.c
 )
 
 target_include_directories(pokemon_gambatte_libretro
@@ -37,6 +40,15 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 )
 
 if(BUILD_TESTING)
+    add_executable(battle_decoder_test tests/battle_decoder_test.c src/battle_decoder.c src/game_profile.c)
+    target_include_directories(battle_decoder_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_options(battle_decoder_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME battle_decoder COMMAND battle_decoder_test)
+    add_executable(sha1_test tests/sha1_test.c src/sha1.c)
+    target_include_directories(sha1_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_options(sha1_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME sha1 COMMAND sha1_test)
     add_executable(memory_view_test tests/memory_view_test.c src/memory_view.c)
     target_include_directories(memory_view_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -84,6 +96,6 @@ if(BUILD_TESTING)
         $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_bad_api> failure)
     add_test(NAME proxy_missing_symbol COMMAND proxy_smoke_test
         $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_incomplete> failure)
-    set_tests_properties(memory_view video_marker proxy_marker proxy_smoke proxy_adjacent proxy_recovery proxy_missing_backend
+    set_tests_properties(sha1 battle_decoder memory_view video_marker proxy_marker proxy_smoke proxy_adjacent proxy_recovery proxy_missing_backend
         proxy_self_backend proxy_bad_api proxy_missing_symbol PROPERTIES TIMEOUT 10)
 endif()
