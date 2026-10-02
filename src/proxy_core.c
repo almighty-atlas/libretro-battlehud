@@ -125,6 +125,8 @@ static void update_battle(void)
     if (debug_enabled && !battle_state_equal(&battle, &next)) {
         if (next.status == BATTLE_ACTIVE && !next.main_menu && !next.fight_menu)
             fprintf(stderr, "battlehud: hidden (battle submenu)\n");
+        else if (next.status == BATTLE_ACTIVE && next.ambiguous_target)
+            fprintf(stderr,"battlehud: battle ambiguous targets; hints unknown, badges hidden\n");
         else if (next.status == BATTLE_ACTIVE) {
             fprintf(stderr, "battlehud: %s species=%u types=%s%s%s raw=%02x/%02x\n",
                     next.mode == 1 ? "wild" : "trainer", (unsigned)next.species,

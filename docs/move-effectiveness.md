@@ -1,5 +1,8 @@
 # Crystal FIGHT move hints
 
+Red/Blue and Emerald use [separate generation-specific profiles and rules](multigen-battles.md),
+with the same hint symbols. The details below describe Crystal.
+
 The normal battle menu and FIGHT show original 8x8 type silhouettes in 12x12
 colored tiles instead of type names. In FIGHT, a 7x7 marker appears in the unused
 rightmost interior tile beside each move. Move names, cursor, borders and PP

@@ -163,3 +163,17 @@ Confirm the debug profile names Red/Blue/Emerald; compare the table across two
 party members on the first stats page (Red/Blue) or Skills page (Emerald). Check
 that it hides on adjacent pages and party transitions. Crystal regression
 acceptance already passed and need not be repeated unless a regression appears.
+
+## Gen 1/3 battle acceptance (pending)
+
+Use the same wrappers/backends and exact ROM hashes above. With a new battle
+build, check one wild battle: main menu and FIGHT should show badges; FIGHT
+hints must match that generation, and Bag/party selection must hide battle HUD.
+Then check a trainer opponent switch. In Emerald, two live opponents yield
+unknown FIGHT hints and no unique-opponent badges; one remaining opponent
+restores ordinary hints. Known Volt Absorb/Levitate/Flash Fire blocks have a
+red cross; copying/dynamic/delayed moves may show a question mark.
+
+Do not repeat the already accepted Crystal checks unless a regression appears.
+The first new manual test can use whichever supported Red/Blue/Emerald ROM is
+already available locally; no ROM is bundled with the build.

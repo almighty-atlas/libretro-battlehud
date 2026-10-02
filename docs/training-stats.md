@@ -90,8 +90,8 @@ Stats tile signatures C455/C47D/C4A5/C4CD, TYPE at C45E; tilemap C3A0.
 ## English Emerald (Gen 3)
 
 Supported original SHA-1: `f3ae088181bf583e55daf962a92bb46f4f1d07b7`, backend **mGBA**.
-This extends the party training display only. Crystal battle type/move decoding
-is never applied to a Gen 1/3 profile. No other GBA core or edition is enabled.
+The profile also has a [separate battle decoder](multigen-battles.md). Crystal
+battle addresses are never applied to Gen 1/3. No other GBA core or edition is enabled.
 
 The Pokémon Skills page (second tab) gets two three-row columns for HP/ATK/DEF
 and SPA/SPD/SPE. IVs are 0–31; stored EVs are 0–255, with a 510 total limit.

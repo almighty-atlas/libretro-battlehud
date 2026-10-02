@@ -1,5 +1,6 @@
 #include "battle_decoder.h"
 #include "move_effectiveness.h"
+#include "multigen_battle.h"
 #include <string.h>
 bool gen2_type_decode(uint8_t raw, enum pokemon_type *type)
 {
@@ -64,6 +65,11 @@ struct battle_state battle_decode(const struct game_profile *p,
     struct battle_state s={0};
     if(!p) return s;
     s.training=training_stats_decode(p,read,context);
+    if(p->generation==1 || p->generation==3) {
+        struct training_stats training=s.training;
+        s=multigen_battle_decode(p,read,context);s.training=training;return s;
+    }
+    s.generation=2;
     if(p->generation!=2) { s.status=BATTLE_OUTSIDE; return s; }
     s.status=BATTLE_UNAVAILABLE;
     uint8_t mode, ended, starting, switching;
@@ -116,7 +122,8 @@ struct battle_state battle_decode(const struct game_profile *p,
 }
 bool battle_state_equal(const struct battle_state *a, const struct battle_state *b)
 {
-    return a->status==b->status && a->mode==b->mode && a->species==b->species &&
+    return a->generation==b->generation && a->ambiguous_target==b->ambiguous_target &&
+        a->status==b->status && a->mode==b->mode && a->species==b->species &&
         a->type1==b->type1 && a->type2==b->type2 && a->raw_type1==b->raw_type1 &&
         a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu && a->fight_menu==b->fight_menu &&
         !memcmp(a->moves,b->moves,sizeof(a->moves)) &&

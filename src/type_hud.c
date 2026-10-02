@@ -56,6 +56,8 @@ static bool fits(const struct battle_state *s, unsigned width, unsigned height)
         width==240 && height==160 : (s->training.generation==1 || s->training.generation==2) && width==160 && height==144;
     if(s->status!=BATTLE_ACTIVE || (!s->main_menu && !s->fight_menu) || !s->species || !valid_type(s->type1) ||
        (s->type2!=TYPE_NONE && !valid_type(s->type2))) return false;
+    if(s->generation==3 && (width!=240 || height!=160)) return false;
+    if(s->generation==1 && (width!=160 || height!=144)) return false;
     unsigned rows=s->type2!=TYPE_NONE && s->type2!=s->type1 ? 2 : 1;
     return width>=16 && height>=2+rows*12+(rows-1)*2+2;
 }
@@ -76,7 +78,8 @@ static void badge(struct type_hud *h,size_t bpp,enum pokemon_type type,unsigned 
 static void move_hints(struct type_hud *h, size_t bpp, const struct battle_state *s)
 {
     /* One 7x7 marker in the unused x=18 tile, next to each 12-character name.
-     * Fixed coordinates belong only to the recognized 160x144 Crystal layout. */
+     * GB list layouts use x=18. Emerald markers use the outer left border
+     * and right-column gap, preserving name windows, both cursors and PP/type. */
     static const uint8_t glyphs[7][7]={
         {14,17,1,2,4,0,4},     /* ? unknown/conditional */
         {4,14,21,4,4,4,4},    /* up: super */
@@ -88,12 +91,15 @@ static void move_hints(struct type_hud *h, size_t bpp, const struct battle_state
     };
     static const uint32_t backgrounds[]={0x665000,0x206038,0x825016,0x405060,
                                          0x902c30,0x505050,0x505050};
-    if(!s->fight_menu || h->width!=160 || h->height!=144) return;
+    if(!s->fight_menu) return;
+    bool gba=s->generation==3;
+    if(gba ? h->width!=240 || h->height!=160 : h->width!=160 || h->height!=144) return;
     for(unsigned i=0;i<4;i++) if(s->moves[i] && s->effectiveness[i]<=MOVE_UNUSABLE) {
-        unsigned k=s->effectiveness[i], top=104+i*8;
+        unsigned k=s->effectiveness[i], top=gba ? 124+(i/2)*16 : 104+i*8;
+        unsigned left=gba ? (i%2 ? 153 : 1) : 144;
         for(unsigned y=0;y<7;y++) for(unsigned x=0;x<7;x++) {
             bool ink=x>=1 && x<=5 && (glyphs[k][y] & (1u<<(5-x)));
-            pixel(h->output,h->pitch,bpp,144+x,top+y,h->format,
+            pixel(h->output,h->pitch,bpp,left+x,top+y,h->format,
                   ink ? 0xffffff : backgrounds[k]);
         }
     }
@@ -257,8 +263,8 @@ const void *type_hud_draw_options(struct type_hud *h, const struct battle_state 
             }
         }
         else {
-            if(options&HUD_TYPES) badge(h,bpp,state->type1,2);
-            if((options&HUD_TYPES) && state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
+            if((options&HUD_TYPES) && !state->ambiguous_target) badge(h,bpp,state->type1,2);
+            if((options&HUD_TYPES) && !state->ambiguous_target && state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
             if(options&HUD_MOVES) move_hints(h,bpp,state);
         }
         result=h->output;

@@ -198,6 +198,55 @@ def worker(path, directory):
         assert source.raw[:-1] == pixels
         clear_hud.argtypes = [C.POINTER(TypeHud)]
         clear_hud(C.byref(hud))
+        # Standalone battle decoder over the real mGBA EWRAM/IWRAM mappings.
+        # The original ROM remains unrecognized; no production profile is forced.
+        u32(0x030022c4, 0x08038421)
+        u32(0x02022fec, 12)
+        write(0x0202406c, b"\x02")
+        write(0x02024076, bytes([0, 1, 0, 0]))
+        write(0x02024210, b"\0")
+        write(0x0202433a, b"\0")
+        u32(0x02024068, 1)
+        write(0x02022e14, struct.pack("<HH", 0, 320))
+        u32(0x03005d60, 0x08057bfd)
+        own, foe = bytearray(88), bytearray(88)
+        for mon, species, types, ability in ((own, 277, (12, 12), 65), (foe, 16, (0, 2), 51)):
+            struct.pack_into("<H", mon, 0, species)
+            mon[32:35] = bytes([ability, *types])
+            mon[42] = 12
+            struct.pack_into("<H", mon, 40, 30)
+            struct.pack_into("<H", mon, 44, 35)
+        struct.pack_into("<4H", own, 12, 85, 89, 45, 354)
+        own[36:40] = bytes([15]*4)
+        write(0x02024084, bytes(own+foe))
+        selection = bytearray(24)
+        selection[0] = 20
+        selection[4:12], selection[12:16] = own[12:20], own[36:40]
+        selection[20:22], selection[22:24] = own[:2], own[33:35]
+        write(0x02023064, bytes(selection))
+        write(0x020242bc, bytes(28))
+        battle = decode(find(b"f3ae088181bf583e55daf962a92bb46f4f1d07b7"), read, None)
+        assert battle.generation == 3 and battle.mode == 2 and battle.fight_menu
+        assert list(battle.moves) == [85, 89, 45, 354]
+        assert list(battle.effectiveness) == [1, 4, 5, 3]
+        out = draw(C.byref(hud), C.byref(battle), source, w, h, w*bpp, f)
+        assert out and out != C.addressof(source)
+        # Original move text, cursors and PP/type pane are preserved.
+        for y in range(120, 152):
+            for x in list(range(8, 153)) + list(range(168, 240)):
+                offset = (y*w+x)*bpp
+                assert C.string_at(out+offset, bpp) == pixels[offset:offset+bpp]
+        assert source.raw[:-1] == pixels
+        foe[32] = 10  # Volt Absorb actual battle ability, independent of species ROM slot.
+        write(0x020240dc, bytes(foe))
+        battle = decode(find(b"f3ae088181bf583e55daf962a92bb46f4f1d07b7"), read, None)
+        assert battle.effectiveness[0] == 4
+        write(0x02023064, b"\x15")  # Bag command hides battle display.
+        battle = decode(find(b"f3ae088181bf583e55daf962a92bb46f4f1d07b7"), read, None)
+        assert not battle.main_menu and not battle.fight_menu
+        clean = draw(C.byref(hud), C.byref(battle), None, w, h, w*bpp, f)
+        assert clean and C.string_at(clean, len(pixels)) == pixels
+        clear_hud(C.byref(hud))
         getter = core.battlehud_get_battle_state
         getter.argtypes, getter.restype = [C.POINTER(BattleState)], C.c_bool
         assert not getter(C.byref(snapshot)), "Original test ROM must remain unrecognized"

@@ -46,6 +46,16 @@ static const struct game_profile crystal_rev1 = {
 /* pret/pokered symbols 3f618d59edf43918f48f5e558c34e04cb2fc5619: same WRAM in both editions. */
 #define KANTO_PROFILE(name, digest) { \
     .id=name, .sha1=digest, .backend_name="Gambatte", .generation=1, \
+    .battle_mode=0xd057, .battle_type=0xd05a, .escaped=0xd078, .battle_starting=0xd11d, \
+    .enemy_species=0xcfe5, .enemy_identity=0xcfd8, .enemy_level=0xcff3, \
+    .enemy_hp=0xcfe6, .enemy_max_hp=0xcff4, .enemy_type1=0xcfea, .enemy_type2=0xcfeb, \
+    .menu_data_pointer=0xd125, .main_menu_pointer=0x0b, .move_geometry=0xcc24, \
+    .move_menu_type=0xccdb, .move_rows=0xcd6c, .player_moves=0xd01c, \
+    .player_pp=0xd02d, .player_disable=0xd06d, \
+    .main_menu_labels={ {0xc4c2,5,{0x85,0x88,0x86,0x87,0x93}}, {0xc4c8,2,{0xe1,0xe2}}, \
+        {0xc4ea,4,{0x88,0x93,0x84,0x8c}}, {0xc4f0,3,{0x91,0x94,0x8d}} }, \
+    .move_menu_labels={ {0xc494,1,{0x7a}}, {0xc49a,1,{0x7e}}, \
+        {0xc4f8,1,{0x7d}}, {0xc507,1,{0x7e}} }, \
     .mon_source=0xcc49, .party_index=0xcf92, .party_count=0xd163, \
     .party_base=0xd16b, .temp_mon=0xcf98, \
     .stats_labels={ \
@@ -60,7 +70,8 @@ static const struct game_profile crystal_rev1 = {
 static const struct game_profile red = KANTO_PROFILE("pokemon-red-us", "ea9bcae617fdf159b045185467ae58b2e4a48b9a");
 static const struct game_profile blue = KANTO_PROFILE("pokemon-blue-us", "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2");
 /* pret/pokeemerald symbols dba968c67d85caf9595abe12a51ff739d4dc5937.
- * Function pointers include the Thumb bit. Only a settled party skills page qualifies. */
+ * Function pointers include the Thumb bit. Battle and summary decoders
+ * require their own settled input callbacks. */
 static const struct game_profile emerald = {
     .id="pokemon-emerald-us", .sha1="f3ae088181bf583e55daf962a92bb46f4f1d07b7",
     .backend_name="mGBA", .generation=3,
@@ -68,7 +79,11 @@ static const struct game_profile emerald = {
     .summary_pointer=0x0203cf1c, .main_callback=0x030022c4,
     .summary_callback=0x081bfab5, .tasks=0x03005e00,
     .input_task=0x081c0511, .palette_fade=0x02037fd4,
-    .species_info=0x083203cc, .ability_names=0x0831b6db
+    .species_info=0x083203cc, .ability_names=0x0831b6db,
+    .gba_battle={ .callback=0x08038421, .flags=0x02022fec, .mons=0x02024084,
+        .count=0x0202406c, .positions=0x02024076, .absent=0x02024210, .outcome=0x0202433a,
+        .controllers=0x03005d60, .exec=0x02024068, .buffer=0x02023064, .disable=0x020242bc,
+        .bg_scroll=0x02022e14, .action_input=0x08057589, .move_input=0x08057bfd }
 };
 const struct game_profile *game_profile_find(const char *sha1)
 {

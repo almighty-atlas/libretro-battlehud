@@ -14,8 +14,8 @@ international registration formats are supported. HUD descriptions use English.
 | `battlehud_party_details` | BattleHUD: Nature and ability | `enabled` / `disabled`; Gen 3 name, stat arrows and ability |
 | `battlehud_layout` | BattleHUD: Layout | `detailed` / `compact`; compact omits EV/stat-experience columns and their total/footer, retaining DV/IV; other toggles remain independent |
 
-Options affect only already supported ROM profiles and pages. They do not add
-battle support to Gen 1/3. Turning off the table still allows Hidden Power and
+Options affect only supported ROM profiles and pages, including the separate
+[Gen 1/3 battle profiles](multigen-battles.md). Turning off the table still allows Hidden Power and
 Gen 3 nature/ability to be shown independently. Stat arrows belong to table
 rows and require both training values and nature/ability to be enabled.
 `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` overrides every HUD preference.

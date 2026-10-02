@@ -1,6 +1,6 @@
 # Game profiles
 
-M3 currently supports only **Pokémon Crystal USA/Europe Rev. 1 (v1.1)**:
+The initial M3 profile supports **Pokémon Crystal USA/Europe Rev. 1 (v1.1)**:
 
 - profile ID: `pokemon-crystal-us-eu-rev1`
 - SHA-1: `f2f52230b536214ef7c9924f483392993e226cfb`
@@ -32,13 +32,13 @@ is empty. Successful save-state restoration recomputes it; reset invalidates it
 until the next frame; game load/unload/deinit clears it.
 
 M3 interactive Crystal decoder acceptance passed on the user's Mac; see
-[validation evidence](validation.md). M4 visual HUD acceptance is pending.
+[validation evidence](validation.md). Crystal pixel icons/FIGHT hints and training-table visual acceptance also passed.
 
 FIGHT move slots, PP, Disable, DVs and Foresight are decoded by the same
 recognized Crystal profile; see [move-effectiveness provenance](move-effectiveness.md).
 
 
-## Training-only profiles
+## Additional battle and training profiles
 
 | Edition | SHA-1 | Backend | Page |
 | --- | --- | --- | --- |
@@ -46,5 +46,6 @@ recognized Crystal profile; see [move-effectiveness provenance](move-effectivene
 | Blue US | d7037c83e1ae5b39bde3c30787637ba1d4c48ce2 | Gambatte | First stats page |
 | Emerald US | f3ae088181bf583e55daf962a92bb46f4f1d07b7 | mGBA | Pokémon Skills (second tab) |
 
-Only the party DV/IV/EV display is enabled by these profiles. Battle icons and
-FIGHT hints remain Crystal-only. See [training details](training-stats.md).
+These profiles enable the party DV/IV/EV display and their own main/FIGHT battle
+decoders. See [training details](training-stats.md) and [generation-specific battle
+provenance and limits](multigen-battles.md). Their interactive acceptance is pending.

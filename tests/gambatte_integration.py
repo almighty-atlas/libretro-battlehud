@@ -27,7 +27,7 @@ class BattleState(C.Structure):
     _fields_ = [("status", C.c_int), ("mode", C.c_uint8), ("species", C.c_uint16),
                 ("type1", C.c_int), ("type2", C.c_int),
                 ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8), ("main_menu", C.c_bool), ("fight_menu", C.c_bool),
-                ("moves", C.c_uint8 * 4), ("effectiveness", C.c_uint8 * 4), ("training", TrainingStats)]
+                ("moves", C.c_uint16 * 4), ("effectiveness", C.c_uint8 * 4), ("training", TrainingStats), ("generation", C.c_uint8), ("ambiguous_target", C.c_bool)]
 
 
 class TypeHud(C.Structure):
@@ -167,6 +167,14 @@ def worker(core_path, directory):
                0xc5c8: 0xe1, 0xc5c9: 0xe2,
                0xc5ea: 0x8f, 0xc5eb: 0x80, 0xc5ec: 0x82, 0xc5ed: 0x8a,
                0xc5f0: 0x91, 0xc5f1: 0x94, 0xc5f2: 0x8d}
+    # Independent Red/Blue FIGHT-shaped RAM alongside the Crystal fixture.
+    fixture.update({0xd057: 1, 0xd05a: 0, 0xd078: 0, 0xd11d: 0,
+        0xcfe5: 36, 0xcfd8: 36, 0xcff3: 5, 0xcfe6: 0, 0xcfe7: 20,
+        0xcff4: 0, 0xcff5: 20, 0xcfea: 0, 0xcfeb: 2,
+        0xcc24: 12, 0xcc25: 5, 0xcc28: 5, 0xccdb: 0, 0xcd6c: 3,
+        0xc494: 0x7a, 0xc49a: 0x7e, 0xc4f8: 0x7d, 0xc507: 0x7e,
+        0xd01c: 85, 0xd01d: 33, 0xd01e: 68, 0xd01f: 45,
+        0xd02d: 15, 0xd02e: 35, 0xd02f: 20, 0xd030: 40, 0xd06d: 0})
     writes = bytes.fromhex("3e 01 ea 70 ff")  # SVBK = 1
     for address, value in fixture.items():
         writes += bytes([0x3e, value, 0xea, address & 255, address >> 8])
@@ -265,6 +273,10 @@ def worker(core_path, directory):
         clear(C.byref(hud))
         assert not hud.clean and not hud.output and not hud.has_frame
         print("Type HUD real-Gambatte frame/decoder fixture passed")
+        red = decode(find(b"ea9bcae617fdf159b045185467ae58b2e4a48b9a"), read_fixture, None)
+        assert red.generation == 1 and red.fight_menu and red.species == 16
+        assert list(red.moves) == [85, 33, 68, 45]
+        assert list(red.effectiveness) == [1, 3, 0, 5]
         getter = core.battlehud_get_battle_state
         getter.argtypes, getter.restype = [C.POINTER(BattleState)], C.c_bool
         assert not getter(C.byref(snapshot)), "original ROM must stay unsupported"

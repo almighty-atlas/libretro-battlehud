@@ -22,8 +22,11 @@ struct battle_state {
     enum pokemon_type type1, type2;
     uint8_t raw_type1, raw_type2;
     bool main_menu, fight_menu; /* Presentation eligibility, independent of combatant. */
-    uint8_t moves[4], effectiveness[4]; /* FIGHT list order; zero slots stay empty. */
+    uint16_t moves[4];
+    uint8_t effectiveness[4]; /* FIGHT list order; zero slots stay empty. */
     struct training_stats training;
+    uint8_t generation;
+    bool ambiguous_target;
 };
 typedef bool (*battle_memory_read)(void *context, size_t address, void *out, size_t size);
 struct battle_state battle_decode(const struct game_profile *profile,

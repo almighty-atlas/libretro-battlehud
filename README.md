@@ -44,13 +44,16 @@ check. English Red/Blue (Gambatte) and Emerald (mGBA)
 now have generation-specific training tables; interactive acceptance is pending.
 Emerald also shows [nature bonuses and stored ability](docs/nature-ability.md);
 interactive acceptance of these details remains pending.
-Type icons and FIGHT hints remain Crystal-only.
+English Red/Blue and Emerald also have [generation-specific battle icons and
+FIGHT hints](docs/multigen-battles.md). Original Gen 1 type bugs and Gen 3 ability
+immunities are handled; ambiguous double targets show unknown hints and hide badges.
+Interactive acceptance of these new battle profiles is pending.
 See [move-effectiveness rules and symbols](docs/move-effectiveness.md).
 Set `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` to disable badges for comparison.
 M0–M3 have passed desktop checks, including user-reported interactive Mac tests; see [validation status](docs/validation.md).
 
 Set `LIBRETRO_BATTLEHUD_TEST_MARKER=1` when launching the frontend for an 8×8 white
-rectangle at the top right. Without it, video remains transparent.
+rectangle at the top right. It is disabled by default; recognized ROMs still use their normal HUD settings.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug

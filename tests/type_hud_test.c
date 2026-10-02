@@ -311,6 +311,33 @@ static void preferences(enum retro_pixel_format f)
     }
     for(size_t i=0;i<sizeof(frame);i++)assert(frame[i]==0x5a);
 }
+static void multigen_battle_pixels(enum retro_pixel_format f,unsigned gen)
+{
+    unsigned w=gen==3?240:160,h=gen==3?160:144;size_t size=bpp(f),pitch=w*size;
+    uint8_t input[240*160*4];memset(input,0x5a,sizeof(input));
+    struct type_hud hud={0};struct battle_state s=model(TYPE_NORMAL,TYPE_FLYING);
+    s.generation=(uint8_t)gen;s.main_menu=false;s.fight_menu=true;
+    for(unsigned i=0;i<4;i++){s.moves[i]=(uint16_t)(gen==3?301+i:33+i);s.effectiveness[i]=(uint8_t)(i+1);}
+    const void *out=type_hud_draw(&hud,&s,input,w,h,pitch,f);assert(out && out!=input);
+    for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++){
+        bool badge=x>=w-14 && x<w-2 && ((y>=2 && y<14)||(y>=16 && y<28));
+        bool hint=gen==3?((x>=1 && x<8)||(x>=153 && x<160)) && ((y>=124 && y<131)||(y>=140 && y<147)):
+            x>=144 && x<151 && ((y>=104 && y<111)||(y>=112 && y<119)||(y>=120 && y<127)||(y>=128 && y<135));
+        if(!badge && !hint)assert(get(out,pitch,size,x,y)==get(input,pitch,size,x,y));
+    }
+    if(gen==3){
+        assert(get(out,pitch,size,1,124)!=get(input,pitch,size,1,124));
+        /* Ambiguous doubles remove badges and show unknown hints instead. */
+        s.ambiguous_target=true;for(unsigned i=0;i<4;i++)s.effectiveness[i]=MOVE_UNKNOWN;
+        out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);assert(out);
+        assert(get(out,pitch,size,w-14,2)==get(input,pitch,size,w-14,2));
+        assert(get(out,pitch,size,1,124)!=get(input,pitch,size,1,124));
+    }
+    s.fight_menu=false;s.main_menu=false;out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);assert(out);
+    assert(!memcmp(out,input,pitch*h));assert(!type_hud_draw(&hud,&s,NULL,w,h,pitch,f));
+    for(size_t j=0;j<sizeof(input);j++)assert(input[j]==0x5a);
+    type_hud_clear(&hud);
+}
 int main(int argc,char **argv)
 {
     check(RETRO_PIXEL_FORMAT_0RGB1555); check(RETRO_PIXEL_FORMAT_RGB565); check(RETRO_PIXEL_FORMAT_XRGB8888);
@@ -318,6 +345,7 @@ int main(int argc,char **argv)
     for(unsigned f=0;f<3;f++){hidden_power_pixels((enum retro_pixel_format)f,2);hidden_power_pixels((enum retro_pixel_format)f,3);}
     for(unsigned f=0;f<3;f++)nature_ability_pixels((enum retro_pixel_format)f);
     for(unsigned f=0;f<3;f++)preferences((enum retro_pixel_format)f);
+    for(unsigned f=0;f<3;f++){multigen_battle_pixels((enum retro_pixel_format)f,1);multigen_battle_pixels((enum retro_pixel_format)f,3);}
     if(argc==2) preview(argv[1]);
     puts("M4 badge pixels, formats, source immutability, duplicate updates and cleanup passed");
     return 0;
