@@ -29,13 +29,14 @@ Development starts on a feature branch and will keep the wrapper transparent bef
 
 PR #1 implements the M0 transparent proxy, M1 opt-in video test marker and
 M2 read-only memory adapter, M3 Crystal USA/Europe Rev. 1 battle decoder and
-M4 colored type badges. Valid active battles show one or two badges at the upper right, in the
+M4 pixel type icons and FIGHT effectiveness hints. Valid active battles show one or two badges at the upper right, in the
 normal battle main menu and FIGHT move selection; bag/party submenus hide them.
 Only SHA-1 `f2f52230b536214ef7c9924f483392993e226cfb` selects the Crystal profile.
 Enable `LIBRETRO_BATTLEHUD_DEBUG=1` to see profile selection and battle changes.
 See [profiles](docs/profiles.md) and [address provenance](docs/reverse-engineering.md).
-M3 interactive Mac acceptance and M4 badge readability/main-menu visibility passed.
-FIGHT visibility is covered automatically; its separate manual test was waived.
+M3 interactive Mac acceptance and M4 text-badge readability/main-menu visibility passed.
+The new pixel icons and move hints await Mac visual acceptance.
+See [move-effectiveness rules and symbols](docs/move-effectiveness.md).
 Set `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` to disable badges for comparison.
 M0–M3 have passed desktop checks, including user-reported interactive Mac tests; see [validation status](docs/validation.md).
 

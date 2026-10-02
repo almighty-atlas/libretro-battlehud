@@ -35,16 +35,16 @@ static void check(enum retro_pixel_format f)
     const void *out=type_hud_draw(&hud,&s,input,w,h,pitch,f);
     assert(out!=input);
     assert(!memcmp(input,original,bytes));
-    /* Both NORMAL and FLYING are 6 glyphs: 43px wide, 13px high. */
-    unsigned left=115;
+    /* Two original 8x8 silhouettes in 12x12 tiles. */
+    unsigned left=146;
     for(unsigned y=0;y<h;y++) for(unsigned x=0;x<w;x++) {
-        bool badge=(x>=left && x<158 && ((y>=2 && y<15)||(y>=17 && y<30)));
+        bool badge=(x>=left && x<158 && ((y>=2 && y<14)||(y>=16 && y<28)));
         if(!badge) assert(!memcmp((const uint8_t *)out+y*pitch+x*size,input+y*pitch+x*size,size));
     }
     assert(get(out,pitch,size,left,2)==packed(f,0x101010));
     assert(get(out,pitch,size,left+1,3)==packed(f,0x606060));
-    assert(get(out,pitch,size,left+4,5)==packed(f,0xffffff)); /* N first pixel */
-    assert(get(out,pitch,size,left+1,18)==packed(f,0x5c5189));
+    assert(get(out,pitch,size,left+5,4)==packed(f,0xffffff)); /* Normal diamond top */
+    assert(get(out,pitch,size,left+1,17)==packed(f,0x5c5189));
     uint8_t *clean=hud.clean,*output=hud.output;
     assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==NULL); /* Identical duplicate. */
     assert(type_hud_draw(&hud,&s,input,w,h,pitch,f)==output);
@@ -53,14 +53,44 @@ static void check(enum retro_pixel_format f)
     s=model(TYPE_GRASS,TYPE_NONE); s.species=152;
     out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);
     assert(out==output);
-    for(unsigned y=17;y<30;y++) for(unsigned x=115;x<158;x++)
+    for(unsigned y=16;y<28;y++) for(unsigned x=146;x<158;x++)
         assert(get(out,pitch,size,x,y)==get(input,pitch,size,x,y));
-    unsigned grass_left=121;
+    unsigned grass_left=146;
     assert(get(out,pitch,size,grass_left+1,3)==packed(f,0x427033));
     /* Main menu -> FIGHT retains badges on the same clean frame. */
     s.main_menu=false; s.fight_menu=true;
     out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==output);
     assert(get(out,pitch,size,grass_left+1,3)==packed(f,0x427033));
+    s.moves[0]=52; s.effectiveness[0]=MOVE_SUPER;
+    s.moves[1]=45; s.effectiveness[1]=MOVE_STATUS;
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==output);
+    assert(get(out,pitch,size,147,104)==packed(f,0xffffff));
+    assert(get(out,pitch,size,144,104)==packed(f,0x206038));
+    assert(get(out,pitch,size,145,115)==packed(f,0xffffff)); /* status dash */
+    for(unsigned y=0;y<h;y++) for(unsigned x=0;x<w;x++) {
+        bool icon=x>=146 && x<158 && y>=2 && y<14;
+        bool hint=x>=144 && x<151 && ((y>=104 && y<111)||(y>=112 && y<119));
+        if(!icon && !hint) assert(get(out,pitch,size,x,y)==get(input,pitch,size,x,y));
+    }
+    s.effectiveness[0]=MOVE_IMMUNE; /* Redraw hints on duplicate even with same enemy. */
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==output);
+    assert(get(out,pitch,size,144,104)==packed(f,0x902c30));
+    s.moves[1]=0;
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==output);
+    assert(get(out,pitch,size,145,115)==get(input,pitch,size,145,115));
+    const uint32_t hint_colors[]={0x665000,0x206038,0x825016,0x405060,
+                                 0x902c30,0x505050,0x505050};
+    for(unsigned k=MOVE_UNKNOWN;k<=MOVE_UNUSABLE;k++) {
+        s.moves[3]=237; s.effectiveness[3]=(uint8_t)k;
+        out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==output);
+        assert(get(out,pitch,size,144,128)==packed(f,hint_colors[k]));
+        assert(!memcmp(input,original,bytes));
+    }
+    /* Move annotations require exact GB geometry; type icons can still fit. */
+    s.moves[3]=0;
+    out=type_hud_draw(&hud,&s,input,w,h-1,pitch,f); assert(out==output);
+    assert(get(out,pitch,size,144,104)==get(input,pitch,size,144,104));
+    out=type_hud_draw(&hud,&s,input,w,h,pitch,f); assert(out==output);
     s.fight_menu=false;
     /* Enter a submenu on a duplicate: the enemy stays valid, badges vanish. */
     s.main_menu=false;
@@ -86,7 +116,7 @@ static void check(enum retro_pixel_format f)
     assert(type_hud_draw(&hud,&s,input,w,h,pitch,f)==input);
     s=model(TYPE_NORMAL,TYPE_NORMAL);
     out=type_hud_draw(&hud,&s,input,w,h,pitch,f);
-    assert(get(out,pitch,size,116,18)==get(input,pitch,size,116,18));
+    assert(get(out,pitch,size,147,17)==get(input,pitch,size,147,17));
     s.status=BATTLE_INVALID;
     assert(type_hud_draw(&hud,&s,input,w,h,pitch,f)==input);
     s=model(TYPE_NORMAL,TYPE_FLYING);

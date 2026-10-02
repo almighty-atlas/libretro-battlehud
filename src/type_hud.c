@@ -2,21 +2,26 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Original 5x7 uppercase bitmap font; each row uses the low five bits. */
-static const uint8_t font[26][7] = {
-    {14,17,17,31,17,17,17}, {30,17,17,30,17,17,30},
-    {14,17,16,16,16,17,14}, {30,17,17,17,17,17,30},
-    {31,16,16,30,16,16,31}, {31,16,16,30,16,16,16},
-    {14,17,16,23,17,17,15}, {17,17,17,31,17,17,17},
-    {14,4,4,4,4,4,14}, {7,2,2,2,18,18,12},
-    {17,18,20,24,20,18,17}, {16,16,16,16,16,16,31},
-    {17,27,21,21,17,17,17}, {17,25,21,19,17,17,17},
-    {14,17,17,17,17,17,14}, {30,17,17,30,16,16,16},
-    {14,17,17,17,21,18,13}, {30,17,17,30,20,18,17},
-    {15,16,16,14,1,1,30}, {31,4,4,4,4,4,4},
-    {17,17,17,17,17,17,14}, {17,17,17,17,17,10,4},
-    {17,17,17,21,21,21,10}, {17,17,10,4,10,17,17},
-    {17,17,10,4,4,4,4}, {31,1,2,4,8,16,31}
+/* Original 8x8 type silhouettes, indexed by normalized type (no ROM art). */
+static const uint8_t icons[18][8] = {
+    {0x18,0x3c,0x7e,0xff,0xff,0x7e,0x3c,0x18}, /* normal: diamond */
+    {0x10,0x10,0x58,0x5c,0x7e,0x76,0x3c,0x18}, /* fire */
+    {0x10,0x18,0x3c,0x3c,0x7e,0x7a,0x3c,0x18}, /* water */
+    {0x0c,0x18,0x30,0x7e,0x0c,0x18,0x30,0x20}, /* electric */
+    {0x03,0x0f,0x1f,0x3d,0x7b,0x76,0x6c,0x80}, /* grass */
+    {0x24,0x18,0x5a,0x3c,0x3c,0x5a,0x18,0x24}, /* ice */
+    {0x78,0xfe,0xaa,0xfe,0x7e,0x3c,0x3c,0x3c}, /* fighting */
+    {0x3c,0x7e,0xdb,0xdb,0x7e,0x24,0x3c,0x24}, /* poison */
+    {0x00,0x10,0x38,0x7c,0xfe,0x00,0xff,0x00}, /* ground */
+    {0x01,0x07,0x1f,0x7e,0xfc,0xf8,0x70,0x20}, /* flying */
+    {0x3c,0x42,0x99,0xa5,0xa5,0x99,0x42,0x3c}, /* psychic */
+    {0x42,0x24,0x3c,0x7e,0xdb,0x7e,0x3c,0x42}, /* bug */
+    {0x00,0x1c,0x3e,0x7b,0xfb,0xe7,0x7e,0x00}, /* rock */
+    {0x3c,0x7e,0xdb,0xdb,0xff,0xff,0xdb,0x81}, /* ghost */
+    {0x42,0x66,0x7e,0x5a,0x7e,0x3c,0x18,0x18}, /* dragon */
+    {0x3c,0x70,0xe0,0xe0,0xe0,0x70,0x3c,0x00}, /* dark */
+    {0x18,0x7e,0x42,0xdb,0xdb,0x42,0x7e,0x18}, /* steel */
+    {0x66,0xff,0xff,0x7e,0x3c,0x18,0x00,0x00}  /* fairy (future profiles) */
 };
 static uint32_t color(enum pokemon_type type)
 {
@@ -47,24 +52,43 @@ static bool fits(const struct battle_state *s, unsigned width, unsigned height)
     if(s->status!=BATTLE_ACTIVE || (!s->main_menu && !s->fight_menu) || !s->species || !valid_type(s->type1) ||
        (s->type2!=TYPE_NONE && !valid_type(s->type2))) return false;
     unsigned rows=s->type2!=TYPE_NONE && s->type2!=s->type1 ? 2 : 1;
-    if(height < 2+rows*13+(rows-1)*2+2) return false;
-    for(unsigned i=0;i<rows;i++) {
-        enum pokemon_type type=i?s->type2:s->type1;
-        if(width < strlen(pokemon_type_name(type))*6+7+4) return false;
-    }
-    return true;
+    return width>=16 && height>=2+rows*12+(rows-1)*2+2;
 }
 static void badge(struct type_hud *h, size_t bpp, enum pokemon_type type, unsigned top)
 {
-    const char *text=pokemon_type_name(type);
-    unsigned len=(unsigned)strlen(text), width=len*6+7, left=h->width-2-width;
-    for(unsigned y=0;y<13;y++) for(unsigned x=0;x<width;x++) {
-        uint32_t rgb=(y==0 || y==12 || x==0 || x==width-1)?0x101010:color(type);
+    unsigned left=h->width-14;
+    for(unsigned y=0;y<12;y++) for(unsigned x=0;x<12;x++) {
+        uint32_t rgb=(y==0 || y==11 || x==0 || x==11)?0x101010:color(type);
         pixel(h->output,h->pitch,bpp,left+x,top+y,h->format,rgb);
     }
-    for(unsigned i=0;i<len;i++) for(unsigned y=0;y<7;y++) for(unsigned x=0;x<5;x++)
-        if(font[(unsigned)(text[i]-'A')][y] & (1u<<(4-x)))
-            pixel(h->output,h->pitch,bpp,left+4+i*6+x,top+3+y,h->format,0xffffff);
+    for(unsigned y=0;y<8;y++) for(unsigned x=0;x<8;x++)
+        if(icons[type-1][y] & (1u<<(7-x)))
+            pixel(h->output,h->pitch,bpp,left+2+x,top+2+y,h->format,0xffffff);
+}
+static void move_hints(struct type_hud *h, size_t bpp, const struct battle_state *s)
+{
+    /* One 7x7 marker in the unused x=18 tile, next to each 12-character name.
+     * Fixed coordinates belong only to the recognized 160x144 Crystal layout. */
+    static const uint8_t glyphs[7][7]={
+        {14,17,1,2,4,0,4},     /* ? unknown/conditional */
+        {4,14,21,4,4,4,4},    /* up: super */
+        {4,4,4,4,21,14,4},    /* down: resisted */
+        {0,0,31,0,31,0,0},    /* = neutral */
+        {17,10,4,10,17,0,0},  /* x immune */
+        {0,0,0,31,0,0,0},     /* - status */
+        {31,17,17,17,17,17,31} /* box: no PP/disabled */
+    };
+    static const uint32_t backgrounds[]={0x665000,0x206038,0x825016,0x405060,
+                                         0x902c30,0x505050,0x505050};
+    if(!s->fight_menu || h->width!=160 || h->height!=144) return;
+    for(unsigned i=0;i<4;i++) if(s->moves[i] && s->effectiveness[i]<=MOVE_UNUSABLE) {
+        unsigned k=s->effectiveness[i], top=104+i*8;
+        for(unsigned y=0;y<7;y++) for(unsigned x=0;x<7;x++) {
+            bool ink=x>=1 && x<=5 && (glyphs[k][y] & (1u<<(5-x)));
+            pixel(h->output,h->pitch,bpp,144+x,top+y,h->format,
+                  ink ? 0xffffff : backgrounds[k]);
+        }
+    }
 }
 static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
 {
@@ -109,7 +133,8 @@ const void *type_hud_draw(struct type_hud *h, const struct battle_state *state,
         for(unsigned y=0;y<height;y++)
             memcpy(h->output+(size_t)y*pitch,h->clean+(size_t)y*pitch,row_bytes);
         badge(h,bpp,state->type1,2);
-        if(state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,17);
+        if(state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
+        move_hints(h,bpp,state);
         result=h->output;
     } else if(active) {
         /* Allocation failure passes a clean frame; retry if a duplicate arrives. */

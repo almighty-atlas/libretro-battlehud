@@ -33,3 +33,6 @@ until the next frame; game load/unload/deinit clears it.
 
 M3 interactive Crystal decoder acceptance passed on the user's Mac; see
 [validation evidence](validation.md). M4 visual HUD acceptance is pending.
+
+FIGHT move slots, PP, Disable, DVs and Foresight are decoded by the same
+recognized Crystal profile; see [move-effectiveness provenance](move-effectiveness.md).

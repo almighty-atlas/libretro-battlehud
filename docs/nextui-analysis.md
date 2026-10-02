@@ -86,7 +86,7 @@ target Cortex-A53.
 
 CI builds the wrapper with that toolchain, disables native host tests in the
 cross build, verifies ELF64/AArch64/shared-object headers, and uploads the
-`battlehud-h700-m4-fight` binary plus `battlehud-nextui-h700-pak` test package.
+`battlehud-h700-icons-moves` binary plus `battlehud-nextui-h700-pak` test package.
 Packaging is prepared; physical M5 device acceptance remains pending. The image currently follows upstream's mutable `latest` tag; pin its
 digest before publishing a reproducible release.
 

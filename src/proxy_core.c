@@ -123,12 +123,21 @@ static void update_battle(void)
     if (debug_enabled && !battle_state_equal(&battle, &next)) {
         if (next.status == BATTLE_ACTIVE && !next.main_menu && !next.fight_menu)
             fprintf(stderr, "battlehud: hidden (battle submenu)\n");
-        else if (next.status == BATTLE_ACTIVE)
+        else if (next.status == BATTLE_ACTIVE) {
             fprintf(stderr, "battlehud: %s species=%u types=%s%s%s raw=%02x/%02x\n",
                     next.mode == 1 ? "wild" : "trainer", (unsigned)next.species,
                     pokemon_type_name(next.type1), next.type2 ? "/" : "",
                     next.type2 ? pokemon_type_name(next.type2) : "",
                     (unsigned)next.raw_type1, (unsigned)next.raw_type2);
+            if(next.fight_menu) {
+                static const char *labels[]={"unknown","super","resisted","neutral",
+                                              "immune","status","unusable"};
+                fprintf(stderr,"battlehud: FIGHT");
+                for(unsigned i=0;i<4;i++) if(next.moves[i])
+                    fprintf(stderr," %u=%s",(unsigned)next.moves[i],labels[next.effectiveness[i]]);
+                fprintf(stderr,"\n");
+            }
+        }
         else {
             const char *reason = next.status == BATTLE_OUTSIDE ? "outside battle" :
                 next.status == BATTLE_TRANSITION ? "battle transition" :

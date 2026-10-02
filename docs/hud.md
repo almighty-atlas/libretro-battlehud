@@ -1,17 +1,16 @@
 # Type HUD (M4)
 
 Recognized Crystal Rev. 1 battles display one or two colored badges at the upper
-right **in the normal FIGHT / PKMN / PACK / RUN main menu and in FIGHT move selection**. Labels use English type names in an original 5×7 bitmap
-font, with a dark border and white text. Identical types produce one badge. The
+right **in the normal FIGHT / PKMN / PACK / RUN main menu and in FIGHT move selection**. Types use original 8×8 pixel silhouettes, with a dark border and white ink. Identical types produce one badge. The
 model is read at the core's video callback before composition, so the rendered
 state belongs to that frame. Outside battle, in bag/party submenus and action text, and during
 invalid/unavailable or start/switch/faint transitions, no badges are drawn.
 The profile checks the menu-data pointer/bank plus all four RAM tilemap labels;
 missing or mismatched data hides the badges without discarding the combatant.
 
-At 160×144 each badge is 13 pixels high, with two-pixel outer margins and a
-two-pixel row gap. Badge width follows label length (largest: 55 pixels). Smaller
-frames that cannot fit the complete labels pass through without partial text.
+At 160×144 each icon tile is 12×12 pixels, with two-pixel outer margins and a
+two-pixel row gap. Smaller frames that cannot fit the icons pass through.
+FIGHT adds a symbol beside each move; see [effectiveness rules](move-effectiveness.md).
 0RGB1555, RGB565 and XRGB8888 are supported. Hardware frames, unknown formats and
 malformed/oversized layouts pass through unchanged.
 
@@ -41,10 +40,9 @@ Badges are enabled by default for the supported profile. Set
 `LIBRETRO_BATTLEHUD_DEBUG=1` independently controls terminal diagnostics.
 There is no unsupported-ROM or profile override.
 
-Unit tests exercise all formats/type labels, exact pixels, source preservation,
+Unit tests exercise all formats/type icons, exact pixels, source preservation,
 pixels outside badges, duplicate updates/removal, submenu visibility changes, layout failures and cleanup.
 Real-Gambatte component tests feed actual emulator pixels and the synthetic
 fixture's decoded model into the renderer, while the production ROM gate remains
-closed for that original test ROM. Actual Crystal HUD visibility, positioning,
-opponent switch/end behavior and restoration must still be accepted on the user's
-Mac. Physical NextUI/H700 testing remains M5.
+closed for that original test ROM. The prior text-badge Mac tests and save-state restoration passed; the new
+icon/hint appearance still needs interactive acceptance. Physical NextUI/H700 testing remains M5.

@@ -18,7 +18,8 @@ class Game(C.Structure):
 class BattleState(C.Structure):
     _fields_ = [("status", C.c_int), ("mode", C.c_uint8), ("species", C.c_uint16),
                 ("type1", C.c_int), ("type2", C.c_int),
-                ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8), ("main_menu", C.c_bool), ("fight_menu", C.c_bool)]
+                ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8), ("main_menu", C.c_bool), ("fight_menu", C.c_bool),
+                ("moves", C.c_uint8 * 4), ("effectiveness", C.c_uint8 * 4)]
 
 
 class TypeHud(C.Structure):
@@ -227,10 +228,10 @@ def worker(core_path, directory):
         assert rendered and rendered != C.addressof(frame_buffer)
         bpp = 4 if fmt == 1 else 2
         white = {0: 0x7fff, 1: 0xffffff, 2: 0xffff}[fmt]
-        assert int.from_bytes(C.string_at(rendered + 5 * pitch + 119 * bpp, bpp), sys.byteorder) == white
+        assert int.from_bytes(C.string_at(rendered + 4 * pitch + 151 * bpp, bpp), sys.byteorder) == white
         for y in range(height):
             for x in range(width):
-                badge = 115 <= x < 158 and (2 <= y < 15 or 17 <= y < 30)
+                badge = 146 <= x < 158 and (2 <= y < 14 or 16 <= y < 28)
                 if not badge:
                     offset = y * pitch + x * bpp
                     assert C.string_at(rendered + offset, bpp) == original[offset:offset + bpp]

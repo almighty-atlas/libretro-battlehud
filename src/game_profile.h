@@ -15,6 +15,7 @@ struct game_profile {
     uint16_t move_menu_type, move_geometry, move_cursor_offsets;
     uint8_t move_origin_y, move_origin_x, move_max_rows, move_offset;
     struct menu_label move_menu_labels[4];
+    uint16_t player_moves, player_dvs, player_pp, player_disable, enemy_substatus1;
 };
 const struct game_profile *game_profile_find(const char *sha1);
 #endif

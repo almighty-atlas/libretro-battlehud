@@ -29,7 +29,9 @@ static const struct game_profile crystal_rev1 = {
     .move_menu_labels = {
         {0xc540, 1, {0x79}}, {0xc54a, 1, {0x7b}},
         {0xc5f8, 1, {0x7d}}, {0xc607, 1, {0x7e}}
-    }
+    },
+    .player_moves = 0xc62e, .player_dvs = 0xc632, .player_pp = 0xc634,
+    .player_disable = 0xc675, .enemy_substatus1 = 0xc66d
 };
 const struct game_profile *game_profile_find(const char *sha1)
 {

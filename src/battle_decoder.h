@@ -12,6 +12,8 @@ enum pokemon_type {
 };
 enum battle_status { BATTLE_UNSUPPORTED, BATTLE_OUTSIDE, BATTLE_TRANSITION,
                      BATTLE_ACTIVE, BATTLE_UNAVAILABLE, BATTLE_INVALID };
+enum move_effectiveness { MOVE_UNKNOWN, MOVE_SUPER, MOVE_RESISTED, MOVE_NEUTRAL,
+                         MOVE_IMMUNE, MOVE_STATUS, MOVE_UNUSABLE };
 struct battle_state {
     enum battle_status status;
     uint8_t mode;
@@ -19,6 +21,7 @@ struct battle_state {
     enum pokemon_type type1, type2;
     uint8_t raw_type1, raw_type2;
     bool main_menu, fight_menu; /* Presentation eligibility, independent of combatant. */
+    uint8_t moves[4], effectiveness[4]; /* FIGHT list order; zero slots stay empty. */
 };
 typedef bool (*battle_memory_read)(void *context, size_t address, void *out, size_t size);
 struct battle_state battle_decode(const struct game_profile *profile,

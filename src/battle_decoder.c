@@ -1,4 +1,5 @@
 #include "battle_decoder.h"
+#include "move_effectiveness.h"
 #include <string.h>
 bool gen2_type_decode(uint8_t raw, enum pokemon_type *type)
 {
@@ -92,11 +93,30 @@ struct battle_state battle_decode(const struct game_profile *p,
     s.raw_type1=types[0]; s.raw_type2=types[1];
     s.main_menu=main_menu_visible(p,read,context);
     s.fight_menu=fight_menu_visible(p,read,context);
+    if(s.fight_menu) {
+        uint8_t ids[4], pp[4], dvs, disabled, identified, rows;
+        if(read(context,p->player_moves,ids,4) && read(context,p->player_pp,pp,4) &&
+           read(context,p->player_dvs,&dvs,1) && read(context,p->player_disable,&disabled,1) &&
+           read(context,p->enemy_substatus1,&identified,1) &&
+           read(context,p->move_geometry+2,&rows,1)) {
+            unsigned count=0;
+            while(count<4 && ids[count] && ids[count]<=251) count++;
+            bool valid=count==rows;
+            for(unsigned i=count;i<4;i++) if(ids[i]) valid=false;
+            if(valid) for(unsigned i=0;i<count;i++) {
+                s.moves[i]=ids[i];
+                s.effectiveness[i]=!(pp[i]&0x3f) || ((disabled&0x0f) && (disabled>>4)==i+1) ?
+                    MOVE_UNUSABLE : gen2_move_effectiveness(ids[i],dvs,t1,s.type2,(identified&8)!=0);
+            }
+        }
+    }
     return s;
 }
 bool battle_state_equal(const struct battle_state *a, const struct battle_state *b)
 {
     return a->status==b->status && a->mode==b->mode && a->species==b->species &&
         a->type1==b->type1 && a->type2==b->type2 && a->raw_type1==b->raw_type1 &&
-        a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu && a->fight_menu==b->fight_menu;
+        a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu && a->fight_menu==b->fight_menu &&
+        !memcmp(a->moves,b->moves,sizeof(a->moves)) &&
+        !memcmp(a->effectiveness,b->effectiveness,sizeof(a->effectiveness));
 }

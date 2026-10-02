@@ -175,3 +175,13 @@ quoting with spaces/apostrophes, backend/argument forwarding, missing-environmen
 failure and preservation of original GBC save/backend/ROM bytes. This is a mocked
 launcher and packaging check, not a MinArch/device run. The suite has 14 CTest cases.
 Physical SP startup, input/audio, HUD, saves and suspend/resume remain pending.
+
+## Pixel icons and per-move hints
+
+The user reconfirmed Mac save-state restoration. Previously accepted opponent
+switch and disk save/restart checks were explicitly skipped instead of repeated.
+Original 8x8 type silhouettes now replace text. FIGHT adds type-effectiveness
+symbols in each move row, with status/conditional/unusable distinctions.
+Fourteen host cases pass; decoder/renderer also pass ASan+UBSan. New feature
+visual acceptance and physical H700 acceptance remain pending. See
+[move-effectiveness details](move-effectiveness.md).
