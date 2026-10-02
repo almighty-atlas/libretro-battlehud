@@ -10,6 +10,7 @@ set(CMAKE_C_EXTENSIONS ON)
 
 add_library(pokemon_gambatte_libretro SHARED
     src/proxy_core.c
+    src/video_marker.c
 )
 
 target_include_directories(pokemon_gambatte_libretro
@@ -35,6 +36,11 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 )
 
 if(BUILD_TESTING)
+    add_executable(video_marker_test tests/video_marker_test.c src/video_marker.c)
+    target_include_directories(video_marker_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_options(video_marker_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME video_marker COMMAND video_marker_test)
     add_library(fake_backend SHARED tests/fake_backend.c)
     target_include_directories(fake_backend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     set_target_properties(fake_backend PROPERTIES
@@ -60,7 +66,7 @@ if(BUILD_TESTING)
             $<TARGET_FILE:pokemon_gambatte_libretro>
             $<TARGET_FILE:fake_backend>
     )
-    foreach(mode adjacent recovery)
+    foreach(mode adjacent recovery marker)
         add_test(NAME proxy_${mode} COMMAND proxy_smoke_test
             $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_backend> ${mode})
     endforeach()
@@ -72,6 +78,6 @@ if(BUILD_TESTING)
         $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_bad_api> failure)
     add_test(NAME proxy_missing_symbol COMMAND proxy_smoke_test
         $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_incomplete> failure)
-    set_tests_properties(proxy_smoke proxy_adjacent proxy_recovery proxy_missing_backend
+    set_tests_properties(video_marker proxy_marker proxy_smoke proxy_adjacent proxy_recovery proxy_missing_backend
         proxy_self_backend proxy_bad_api proxy_missing_symbol PROPERTIES TIMEOUT 10)
 endif()

@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
 #include "libretro.h"
+#include "video_marker.h"
 
 #include <dlfcn.h>
 #include <limits.h>
@@ -74,23 +75,26 @@ static retro_audio_sample_t frontend_audio_sample;
 static retro_audio_sample_batch_t frontend_audio_sample_batch;
 static retro_input_poll_t frontend_input_poll;
 static retro_input_state_t frontend_input_state;
+static struct video_marker marker;
+static bool marker_enabled;
+static enum retro_pixel_format pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 
 static bool proxy_environment(unsigned cmd, void *data)
 {
-    /*
-     * M0 is deliberately transparent. Future milestones will observe
-     * RETRO_ENVIRONMENT_SET_MEMORY_MAPS and RETRO_ENVIRONMENT_SET_PIXEL_FORMAT
-     * here, then forward the call unchanged.
-     */
-    return frontend_environment ? frontend_environment(cmd, data) : false;
+    bool accepted = frontend_environment ? frontend_environment(cmd, data) : false;
+    if (accepted && data && cmd == RETRO_ENVIRONMENT_SET_PIXEL_FORMAT)
+        pixel_format = *(const enum retro_pixel_format *)data;
+    return accepted;
 }
 
 static void proxy_video_refresh(const void *data, unsigned width,
                                 unsigned height, size_t pitch)
 {
-    /* M0 forwards frames byte-for-byte. M1 will composite the HUD here. */
-    if (frontend_video_refresh)
+    if (frontend_video_refresh) {
+        if (marker_enabled)
+            data = video_marker_draw(&marker, data, width, height, pitch, pixel_format);
         frontend_video_refresh(data, width, height, pitch);
+    }
 }
 
 static void proxy_audio_sample(int16_t left, int16_t right)
@@ -270,6 +274,8 @@ unsigned retro_api_version(void)
 
 void retro_init(void)
 {
+    const char *enabled = getenv("LIBRETRO_BATTLEHUD_TEST_MARKER");
+    marker_enabled = enabled && strcmp(enabled, "1") == 0;
     if (load_backend())
         backend.init();
 }
@@ -282,6 +288,9 @@ void retro_deinit(void)
         dlclose(backend.handle);
         memset(&backend, 0, sizeof(backend));
     }
+    video_marker_clear(&marker);
+    marker_enabled = false;
+    pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 }
 
 void retro_set_environment(retro_environment_t cb)

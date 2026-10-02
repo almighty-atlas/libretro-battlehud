@@ -34,6 +34,7 @@ static int audio_calls;
 static int input_poll_calls;
 static int input_state_calls;
 static int sample_calls;
+static bool expect_marker;
 
 static bool frontend_environment(unsigned cmd, void *data)
 {
@@ -57,11 +58,21 @@ static void frontend_video(const void *data, unsigned width,
     }
     if (data) {
         const unsigned char *bytes = data;
-        for (size_t i = 0; i < pitch * height; ++i)
-            if (bytes[i] != 0x5a) {
+        for (size_t i = 0; i < pitch * height; ++i) {
+            if (expect_marker && i % pitch >= width * sizeof(uint32_t))
+                continue; /* Padding is not part of the displayed frame. */
+            unsigned x = (unsigned)(i % pitch) / 4;
+            unsigned y = (unsigned)(i / pitch);
+            uint8_t expected = 0x5a;
+            if (expect_marker && y < 8 && x >= width - 8) {
+                uint32_t white = 0xffffff;
+                expected = ((const uint8_t *)&white)[i % 4];
+            }
+            if (bytes[i] != expected) {
                 fprintf(stderr, "frame bytes or padding changed\n");
                 exit(22);
             }
+        }
     }
     video_calls++;
 }
@@ -141,6 +152,12 @@ int main(int argc, char **argv)
         unsetenv("LIBRETRO_BATTLEHUD_BACKEND");
     else if (!strcmp(mode, "recovery"))
         setenv("LIBRETRO_BATTLEHUD_BACKEND", "/nonexistent/battlehud-backend.so", 1);
+
+    expect_marker = !strcmp(mode, "marker");
+    if (expect_marker)
+        setenv("LIBRETRO_BATTLEHUD_TEST_MARKER", "1", 1);
+    else
+        unsetenv("LIBRETRO_BATTLEHUD_TEST_MARKER");
 
     wrapper = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
     if (!wrapper) {

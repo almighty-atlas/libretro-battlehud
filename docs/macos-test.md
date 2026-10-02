@@ -20,7 +20,7 @@ AArch64 one, cannot be loaded on macOS. Our macOS artifact is a Mach-O arm64
 
 ## Obtain or build the wrapper
 
-Download `battlehud-macos-arm64-m0` from a successful GitHub Actions run. Extract it
+Download `battlehud-macos-arm64-m1` from a successful GitHub Actions run. Extract it
 into a separate development folder. It contains only the wrapper, without a game
 or Gambatte binary. CI tests the wrapper and independently built pinned Gambatte;
 the Core Downloader's Gambatte build still needs the interactive check below.
@@ -72,6 +72,8 @@ the saves/states produced in the direct test. Preserve the test logs and record
 the RetroArch version, Gambatte version, ROM hash and wrapper commit. Verify the
 actual app executable name if the installation differs from the path above.
 
-M0 renders no HUD or marker. Seeing an unchanged game is the expected result.
+The default M0 mode renders no marker. To test M1, prefix the launch command with
+`LIBRETRO_BATTLEHUD_TEST_MARKER=1` as well as the backend variable. Expect an 8×8
+white rectangle in the top-right corner of the game image. There is no type HUD yet.
 After a successful interactive desktop test, M1 can be developed and checked on
 the Mac while H700 device validation remains explicitly outstanding.

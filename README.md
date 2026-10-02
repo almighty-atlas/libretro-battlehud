@@ -27,8 +27,12 @@ Development starts on a feature branch and will keep the wrapper transparent bef
 
 ## Current status and development
 
-PR #1 implements M0 only: transparent callback/API forwarding and backend loading.
-Pokémon decoding and HUD rendering are not implemented yet.
+PR #1 implements the M0 transparent proxy and the M1 opt-in video test marker.
+Pokémon decoding and the type HUD are not implemented yet.
+M0 has passed a user-reported interactive Mac test; see [validation status](docs/validation.md).
+
+Set `LIBRETRO_BATTLEHUD_TEST_MARKER=1` when launching the frontend for an 8×8 white
+rectangle at the top right. Without it, video remains transparent.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug

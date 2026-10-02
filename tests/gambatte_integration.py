@@ -34,6 +34,8 @@ def worker(core_path, directory):
     video_hash, audio_hash = hashlib.sha256(), hashlib.sha256()
     stats = {"frames": 0, "samples": 0, "polls": 0}
     errors = []
+    marker_test = os.environ.get("LIBRETRO_BATTLEHUD_TEST_MARKER") == "1"
+    require_marker = os.environ.get("BATTLEHUD_EXPECT_MARKER") == "1"
     pixel_format = 0  # Libretro defaults to 0RGB1555.
     directory_bytes = os.fsencode(directory)
 
@@ -68,7 +70,15 @@ def worker(core_path, directory):
             return
         # Padding is unspecified; compare visible pixels only.
         for row in range(height):
-            video_hash.update(C.string_at(data + row * pitch, width * bpp))
+            pixels = C.string_at(data + row * pitch, width * bpp)
+            if marker_test and row < 8:
+                if require_marker:
+                    white = {0: 0x7fff, 1: 0xffffff, 2: 0xffff}[pixel_format]
+                    expected = white.to_bytes(bpp, sys.byteorder) * 8
+                    if pixels[-8 * bpp:] != expected:
+                        errors.append("test marker missing")
+                pixels = pixels[:-8 * bpp]
+            video_hash.update(pixels)
 
     @SAMPLE
     def sample(left, right):
@@ -155,17 +165,21 @@ def main():
         worker(sys.argv[2], sys.argv[3])
         return
     wrapper, backend = map(lambda p: str(Path(p).resolve()), sys.argv[1:3])
+    marker_test = "--marker" in sys.argv[3:]
     results = []
     for core in (backend, wrapper):
         with tempfile.TemporaryDirectory() as directory:
             env = dict(os.environ, LIBRETRO_BATTLEHUD_BACKEND=backend)
+            env["LIBRETRO_BATTLEHUD_TEST_MARKER"] = "1" if marker_test else "0"
+            env["BATTLEHUD_EXPECT_MARKER"] = "1" if marker_test and core == wrapper else "0"
             run = subprocess.run([sys.executable, __file__, "--worker", core, directory],
                                  env=env, capture_output=True, text=True, timeout=60)
             if run.returncode:
                 raise RuntimeError(f"{core}: {run.stdout}\n{run.stderr}")
             results.append(json.loads((Path(directory) / "result.json").read_text()))
     assert results[0] == results[1], results
-    print("Real Gambatte direct/proxy parity passed:", json.dumps(results[0], sort_keys=True))
+    label = "marker and non-marker-area parity" if marker_test else "direct/proxy parity"
+    print(f"Real Gambatte {label} passed:", json.dumps(results[0], sort_keys=True))
 
 
 if __name__ == "__main__":

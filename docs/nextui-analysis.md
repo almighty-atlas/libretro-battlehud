@@ -85,7 +85,7 @@ target Cortex-A53.
 
 CI builds the M0 wrapper with that toolchain, disables native host tests in the
 cross build, verifies ELF64/AArch64/shared-object headers, and uploads the
-`battlehud-h700-m0` artifact. This is a test binary, not an installer or completed
+`battlehud-h700-m1` artifact. This is a test binary, not an installer or completed
 M5 package. The image currently follows upstream's mutable `latest` tag; pin its
 digest before publishing a reproducible release.
 
@@ -104,5 +104,6 @@ docker run --rm -v "$PWD:/root/workspace" -w /root/workspace \
 
 The next M0 gate is a target-frontend run: start a GB/GBC game, check video/audio/input,
 change a Gambatte option, save/reload SRAM and a save state, and quit/relaunch cleanly.
-Then repeat under RetroArch. Automated headless Gambatte parity complements these
+The desktop gate can be satisfied first under macOS/RetroArch; H700 device checks
+remain outstanding. See [recorded validation](validation.md). Automated headless Gambatte parity complements these
 checks; it does not replace them. M1 starts after this gate is satisfied.
