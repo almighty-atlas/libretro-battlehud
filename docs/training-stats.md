@@ -136,3 +136,7 @@ with Emerald. Red/Blue and Emerald interactive macOS acceptance remains pending.
 The existing NextUI PBH package still launches Gambatte; it cannot launch Emerald.
 
 The Gen 2/3 training panes now also show [Hidden Power type/base power](hidden-power.md).
+
+Emerald also shows [nature arrows and stored ability](nature-ability.md) above the
+training table. Its additional banner occupies y=104..111; original stats end at
+y=103 and remain untouched.

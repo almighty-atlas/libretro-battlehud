@@ -5,6 +5,7 @@
 #include "memory_view.h"
 #include "battle_decoder.h"
 #include "hidden_power.h"
+#include "party_details.h"
 #include "sha1.h"
 #include "type_hud.h"
 
@@ -156,6 +157,11 @@ static void update_battle(void)
             fprintf(stderr," EV=");
             for(unsigned i=0;i<6;i++) fprintf(stderr,"%s%u",i?"/":"",(unsigned)next.training.ev[i]);
             fprintf(stderr,"\n");
+            if(next.training.generation==3 && next.training.nature_known)
+                fprintf(stderr,"battlehud: nature=%s ability=%s slot=%u\n",
+                        gen3_nature_name(next.training.nature),
+                        next.training.ability_known ? next.training.ability_name : "unavailable",
+                        (unsigned)next.training.ability_slot);
             struct hidden_power hp;
             if(hidden_power_calculate(next.training.generation,next.training.dv,&hp))
                 fprintf(stderr,"battlehud: Hidden Power type=%s power=%u\n",

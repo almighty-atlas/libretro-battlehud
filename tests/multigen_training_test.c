@@ -6,13 +6,16 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-static uint8_t gb[0x2000],ewram[0x40000],iwram[0x8000];
+static uint8_t gb[0x2000],ewram[0x40000],iwram[0x8000],rom[0x340000];
+static bool pid_override;static uint32_t forced_pid;
+static unsigned ability_slot;static uint16_t fixture_species=277;
 static size_t missing;
 static uint8_t *at(size_t a,size_t n)
 {
     if(a>=0xc000 && a<0xe000 && n<=0xe000-a) return gb+a-0xc000;
     if(a>=0x02000000 && a<0x02040000 && n<=0x02040000-a) return ewram+a-0x02000000;
     if(a>=0x03000000 && a<0x03008000 && n<=0x03008000-a) return iwram+a-0x03000000;
+    if(a>=0x08000000 && a<0x08340000 && n<=0x08340000-a) return rom+a-0x08000000;
     return NULL;
 }
 static bool read_memory(void *ctx,size_t a,void *out,size_t n)
@@ -34,7 +37,7 @@ static void kanto_test(const char *hash)
         kanto_fixture(p,slot,0xa5,0xc3);uint8_t before[sizeof(gb)];memcpy(before,gb,sizeof(gb));
         struct training_stats s=training_stats_decode(p,read_memory,NULL);
         const uint8_t dv[]={5,10,5,3,3,12};const uint16_t ev[]={0,1,256,0x1234,0x1234,65535};
-        assert(s.visible && s.generation==1 && s.slot==slot && s.species==177);
+        assert(s.visible && s.generation==1 && s.slot==slot && s.species==177 && !s.nature_known && !s.ability_known);
         assert(!memcmp(s.dv,dv,6) && !memcmp(s.ev,ev,sizeof(ev)) && !memcmp(before,gb,sizeof(gb)));
         struct battle_state state=battle_decode(p,read_memory,NULL);assert(state.status==BATTLE_OUTSIDE && state.training.visible);
     }
@@ -53,22 +56,25 @@ static const uint32_t summary=0x02001000;
 static const char *const orders[]={"GAEM","GAME","GEAM","GEMA","GMAE","GMEA","AGEM","AGME","AEGM","AEMG","AMGE","AMEG","EGAM","EGMA","EAGM","EAMG","EMGA","EMAG","MGAE","MGEA","MAGE","MAEG","MEGA","MEAG"};
 static void emerald_fixture(const struct game_profile *p,unsigned slot,unsigned permutation,unsigned variant)
 {
-    memset(ewram,0,sizeof(ewram));memset(iwram,0,sizeof(iwram));
+    memset(ewram,0,sizeof(ewram));memset(iwram,0,sizeof(iwram));memset(rom,0,sizeof(rom));
+    *at(p->species_info+277*28+22,1)=65;*at(p->species_info+19*28+22,1)=50;*at(p->species_info+19*28+23,1)=62;
+    const char *names[]={"OVERGROW","RUN AWAY","GUTS"};const uint8_t ids[]={65,50,62};
+    for(unsigned n=0;n<3;n++) {uint8_t *name=at(p->ability_names+ids[n]*13,13);memset(name,0xff,13);for(unsigned i=0;names[n][i];i++)name[i]=names[n][i]==' ' ? 0 : (uint8_t)(names[n][i]-'A'+0xbb);}
     put32(at(p->main_callback,4),p->summary_callback);put32(at(p->summary_pointer,4),summary);
     put32(at(p->tasks+3*40,4),p->input_task);*at(p->tasks+3*40+4,1)=1;
     put32(at(summary,4),p->gba_party_base);*at(p->gba_party_count,1)=6;
     uint8_t *screen=at(summary+0x40bc,5);screen[0]=0;screen[1]=0;screen[2]=(uint8_t)slot;screen[3]=5;screen[4]=1;
-    uint8_t *mon=at(summary+12,100);uint32_t pid=24*12345+permutation,key=pid^0xdeadbeefu;
+    uint8_t *mon=at(summary+12,100);uint32_t pid=pid_override ? forced_pid : 24*12345+permutation,key=pid^0xdeadbeefu;
     put32(mon,pid);put32(mon+4,0xdeadbeefu);mon[19]=2;mon[84]=12;
     uint8_t clear[48]={0};uint32_t iv=31u|(1u<<5)|(17u<<10)|(2u<<15)|(29u<<20)|(3u<<25);
     for(unsigned block=0;block<4;block++) {
         uint8_t *b=clear+block*12;
-        if(orders[permutation][block]=='G') {b[0]=277&255;b[1]=277>>8;}
-        if(orders[permutation][block]=='E') {const uint8_t ev[]={0,1,252,4,128,125};memcpy(b,ev,6);if(variant){memset(b,0,6);b[0]=b[1]=255;}}
-        if(orders[permutation][block]=='M')put32(b+4,iv | (variant==3 ? 1u<<30 : 0));
-        if(variant==2 && orders[permutation][block]=='E') b[2]=1;
-        if(variant==4 && orders[permutation][block]=='G') b[0]=b[1]=0;
-        if(variant==5 && orders[permutation][block]=='G') {b[0]=252;b[1]=0;}
+        if(orders[pid%24][block]=='G') {b[0]=(uint8_t)fixture_species;b[1]=(uint8_t)(fixture_species>>8);}
+        if(orders[pid%24][block]=='E') {const uint8_t ev[]={0,1,252,4,128,125};memcpy(b,ev,6);if(variant){memset(b,0,6);b[0]=b[1]=255;}}
+        if(orders[pid%24][block]=='M')put32(b+4,iv | (variant==3 ? 1u<<30 : 0) | (ability_slot ? 1u<<31 : 0));
+        if(variant==2 && orders[pid%24][block]=='E') b[2]=1;
+        if(variant==4 && orders[pid%24][block]=='G') b[0]=b[1]=0;
+        if(variant==5 && orders[pid%24][block]=='G') {b[0]=252;b[1]=0;}
     }
     unsigned checksum=0;for(unsigned i=0;i<48;i+=2)checksum+=clear[i]+((unsigned)clear[i+1]<<8);
     mon[28]=(uint8_t)checksum;mon[29]=(uint8_t)(checksum>>8);
@@ -83,9 +89,36 @@ static void emerald_test(void)
         emerald_fixture(p,slot,permutation,false);uint8_t before[100];memcpy(before,at(summary+12,100),100);
         struct training_stats s=training_stats_decode(p,read_memory,NULL);
         assert(s.visible && s.slot==slot && s.species==277 && s.generation==3);
+        assert(s.nature_known && s.nature==(24*12345+permutation)%25);
+        assert(s.ability_known && s.ability==65 && s.ability_slot==0 && !strcmp(s.ability_name,"OVERGROW"));
         assert(!memcmp(s.dv,iv,6) && !memcmp(s.ev,ev,sizeof(ev)) && !memcmp(before,at(summary+12,100),100));
         struct battle_state state=battle_decode(p,read_memory,NULL);assert(state.status==BATTLE_OUTSIDE && state.training.visible);
     }
+    pid_override=true;
+    for(unsigned nature=0;nature<25;nature++) {
+        forced_pid=25*10000+nature;emerald_fixture(p,0,0,false);
+        struct training_stats t=training_stats_decode(p,read_memory,NULL);
+        assert(t.visible && t.nature_known && t.nature==nature);
+    }
+    forced_pid=13;fixture_species=19; /* Odd PID must not select ability slot 1 automatically. */
+    for(unsigned slot=0;slot<2;slot++) {
+        ability_slot=slot;emerald_fixture(p,slot,0,false);
+        struct training_stats t=training_stats_decode(p,read_memory,NULL);
+        assert(t.visible && t.nature==13 && t.ability_known && t.ability_slot==slot);
+        assert(t.ability==(slot ? 62 : 50) && !strcmp(t.ability_name,slot ? "GUTS" : "RUN AWAY"));
+    }
+    fixture_species=277;ability_slot=1;emerald_fixture(p,0,0,false);
+    struct training_stats none=training_stats_decode(p,read_memory,NULL);
+    assert(none.visible && none.ability_known && none.ability==0 && !strcmp(none.ability_name,"NONE"));
+    pid_override=false;ability_slot=0;
+    const size_t rom_reads[]={p->species_info+277*28+22,p->ability_names+65*13};
+    for(unsigned i=0;i<2;i++) {
+        emerald_fixture(p,0,0,false);missing=rom_reads[i];
+        struct training_stats t=training_stats_decode(p,read_memory,NULL);
+        assert(t.visible && t.nature_known && !t.ability_known && !t.ability_name[0]);missing=0;
+    }
+    emerald_fixture(p,0,0,false);*at(p->species_info+277*28+22,1)=255;
+    assert(training_stats_decode(p,read_memory,NULL).visible && !training_stats_decode(p,read_memory,NULL).ability_known);
     emerald_fixture(p,0,0,true);struct training_stats s=training_stats_decode(p,read_memory,NULL);assert(s.visible && s.ev[0]==255 && s.ev[1]==255);
     for(unsigned variant=2;variant<=5;variant++) {emerald_fixture(p,0,0,variant);assert(!training_stats_decode(p,read_memory,NULL).visible);}
     const struct {size_t a;uint8_t b;} bad[]={

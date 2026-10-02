@@ -17,7 +17,10 @@ class Game(C.Structure):
 
 class TrainingStats(C.Structure):
     _fields_ = [("visible", C.c_bool), ("slot", C.c_uint8), ("generation", C.c_uint8), ("species", C.c_uint16),
-                ("dv", C.c_uint8 * 6), ("ev", C.c_uint16 * 6)]
+                ("dv", C.c_uint8 * 6), ("ev", C.c_uint16 * 6),
+                ("nature_known", C.c_bool), ("ability_known", C.c_bool),
+                ("nature", C.c_uint8), ("ability", C.c_uint8), ("ability_slot", C.c_uint8),
+                ("ability_name", C.c_char * 13)]
 
 
 class BattleState(C.Structure):

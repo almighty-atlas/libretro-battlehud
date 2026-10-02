@@ -67,7 +67,8 @@ static const struct game_profile emerald = {
     .gba_party_count=0x020244e9, .gba_party_base=0x020244ec,
     .summary_pointer=0x0203cf1c, .main_callback=0x030022c4,
     .summary_callback=0x081bfab5, .tasks=0x03005e00,
-    .input_task=0x081c0511, .palette_fade=0x02037fd4
+    .input_task=0x081c0511, .palette_fade=0x02037fd4,
+    .species_info=0x083203cc, .ability_names=0x0831b6db
 };
 const struct game_profile *game_profile_find(const char *sha1)
 {

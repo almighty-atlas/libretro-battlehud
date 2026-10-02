@@ -42,6 +42,8 @@ a [Hidden Power type/base-power row](docs/hidden-power.md). The DV/stat-experien
 table passed Crystal Mac acceptance; the Hidden Power row awaits an interactive
 check. English Red/Blue (Gambatte) and Emerald (mGBA)
 now have generation-specific training tables; interactive acceptance is pending.
+Emerald also shows [nature bonuses and stored ability](docs/nature-ability.md);
+interactive acceptance of these details remains pending.
 Type icons and FIGHT hints remain Crystal-only.
 See [move-effectiveness rules and symbols](docs/move-effectiveness.md).
 Set `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` to disable badges for comparison.

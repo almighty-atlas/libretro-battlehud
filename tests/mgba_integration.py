@@ -23,7 +23,7 @@ class Map(C.Structure):
     _fields_ = [("descriptors", C.POINTER(Descriptor)), ("count", C.c_uint)]
 
 def original_rom():
-    rom = bytearray(32768)
+    rom = bytearray(0x400000)
     struct.pack_into("<I", rom, 0, 0xea00002e)  # ARM branch to $080000C0.
     rom[0xa0:0xac] = b"BATTLEHUDGBA!"
     rom[0xb2] = 0x96
@@ -35,6 +35,12 @@ def original_rom():
     for instruction, literal in ((7, 14), (10, 15)):
         words[instruction] = 0xe59f0000 | ((literal - instruction - 2) * 4)
     struct.pack_into("<" + "I" * len(words), rom, 0xc0, *words)
+    # Factual lookup fixture for the original test ROM, not commercial ROM data.
+    for species, pair in ((277, (65, 0)), (19, (50, 62))):
+        rom[0x3203cc+species*28+22:0x3203cc+species*28+24] = bytes(pair)
+    for ability, name in ((65, "OVERGROW"), (50, "RUN AWAY"), (62, "GUTS")):
+        encoded = bytes(0 if c == " " else ord(c)-ord("A")+0xbb for c in name) + b"\xff"
+        rom[0x31b6db+ability*13:0x31b6db+ability*13+13] = encoded.ljust(13, b"\xff")
     return rom
 
 def worker(path, directory):
@@ -159,6 +165,9 @@ def worker(path, directory):
         assert snapshot.training.visible and snapshot.training.species == 277
         assert list(snapshot.training.dv) == [31, 1, 17, 29, 3, 2]
         assert list(snapshot.training.ev) == [0, 1, 252, 128, 125, 4]
+        assert snapshot.training.nature_known and snapshot.training.nature == 0  # PID 0 -> Hardy
+        assert snapshot.training.ability_known and snapshot.training.ability == 65
+        assert snapshot.training.ability_name == b"OVERGROW" and snapshot.training.ability_slot == 0
         calculate = core.hidden_power_calculate
         calculate.argtypes, calculate.restype = [C.c_uint, C.POINTER(C.c_uint8), C.POINTER(HiddenPower)], C.c_bool
         hp = HiddenPower()
@@ -174,7 +183,7 @@ def worker(path, directory):
         assert out and out != C.addressof(source)
         for y in range(h):
             for x in range(w):
-                if x < 80 or y < 112:
+                if x < 80 or y < 104:
                     offset = (y*w+x)*bpp
                     assert C.string_at(out+offset, bpp) == pixels[offset:offset+bpp]
         assert source.raw[:-1] == pixels

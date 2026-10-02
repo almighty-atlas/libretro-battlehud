@@ -1,4 +1,5 @@
 #include "training_stats.h"
+#include "party_details.h"
 #include <string.h>
 static struct training_stats crystal_decode(const struct game_profile *p,
                                            training_memory_read read, void *context)
@@ -92,7 +93,10 @@ static struct training_stats emerald_decode(const struct game_profile *p,trainin
     const unsigned order[]={0,1,2,4,5,3};unsigned total=0;
     for(unsigned i=0;i<6;i++) {s.dv[i]=(uint8_t)((iv>>(order[i]*5))&31);s.ev[i]=ev[order[i]];total+=s.ev[i];}
     if(total>510) return (struct training_stats){0};
-    s.visible=true;s.slot=screen[2];s.species=species;s.generation=3;return s;
+    s.visible=true;s.slot=screen[2];s.species=species;s.generation=3;
+    s.nature_known=true;s.nature=(uint8_t)(pid%25);s.ability_slot=(uint8_t)(iv>>31);
+    s.ability_known=gen3_ability_read(p,read,ctx,species,s.ability_slot,&s.ability,s.ability_name);
+    return s;
 }
 struct training_stats training_stats_decode(const struct game_profile *p,training_memory_read read,void *ctx)
 {
@@ -105,5 +109,8 @@ struct training_stats training_stats_decode(const struct game_profile *p,trainin
 bool training_stats_equal(const struct training_stats *a,const struct training_stats *b)
 {
     return a->visible==b->visible && a->generation==b->generation && a->slot==b->slot && a->species==b->species &&
+        a->nature_known==b->nature_known && a->ability_known==b->ability_known &&
+        a->nature==b->nature && a->ability==b->ability && a->ability_slot==b->ability_slot &&
+        !memcmp(a->ability_name,b->ability_name,sizeof(a->ability_name)) &&
         !memcmp(a->dv,b->dv,sizeof(a->dv)) && !memcmp(a->ev,b->ev,sizeof(a->ev));
 }

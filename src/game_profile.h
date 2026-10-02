@@ -22,6 +22,7 @@ struct game_profile {
     struct menu_label stats_labels[5];
     uint32_t gba_party_count, gba_party_base, summary_pointer;
     uint32_t main_callback, summary_callback, tasks, input_task, palette_fade;
+    uint32_t species_info, ability_names;
 };
 const struct game_profile *game_profile_find(const char *sha1);
 #endif

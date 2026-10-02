@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 #include "type_hud.h"
+#include "party_details.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -208,6 +209,52 @@ static void hidden_power_pixels(enum retro_pixel_format f,unsigned generation)
     for(unsigned y=0;y<h;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,pitch));
     type_hud_clear(&hud);free(frame);
 }
+static void nature_ability_pixels(enum retro_pixel_format f)
+{
+    const unsigned w=240,h=160;size_t bpp=f==RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2,pitch=w*bpp+8,bytes=pitch*h;
+    uint8_t *frame=malloc(bytes),*original=malloc(bytes);assert(frame && original);
+    memset(frame,0x5a,bytes);memcpy(original,frame,bytes);
+    struct type_hud hud={0};struct battle_state s={0},hidden={0};
+    s.training.visible=true;s.training.generation=3;s.training.nature_known=true;s.training.nature=3;
+    s.training.ability_known=true;s.training.ability=31;memcpy(s.training.ability_name,"LIGHTNINGROD",13);
+    for(unsigned i=0;i<6;i++){s.training.dv[i]=31;s.training.ev[i]=85;}
+    const void *out=type_hud_draw(&hud,&s,frame,w,h,pitch,f);assert(out==hud.output);
+    for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(x<80 || y<104)assert(get(out,pitch,bpp,x,y)==get(frame,pitch,bpp,x,y));
+    assert(get(out,pitch,bpp,80,104)==packed(f,0x18202c));
+    assert(get(out,pitch,bpp,82,105)==packed(f,0x90c4ff)); /* N prefix */
+    assert(get(out,pitch,bpp,162,105)==packed(f,0xffffff)); /* L in longest ability */
+    assert(get(out,pitch,bpp,228,105)==packed(f,0xffffff)); /* D in last name character */
+    assert(!memcmp(frame,original,bytes));
+    for(unsigned nature=0;nature<25;nature++) {
+        s.training.nature=(uint8_t)nature;
+        out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);assert(out==hud.output);
+        for(unsigned stat=0;stat<6;stat++) {
+            unsigned left=80+(stat/3)*80,top=121+(stat%3)*10;
+            int effect=gen3_nature_effect((uint8_t)nature,stat);
+            assert(get(out,pitch,bpp,left+22,top+1)==packed(f,effect>0 ? 0x78e6a0 : effect<0 ? 0xff9292 : 0x18202c));
+            assert(get(out,pitch,bpp,left+20,top+2)==packed(f,effect>0 ? 0x78e6a0 : 0x18202c));
+            assert(get(out,pitch,bpp,left+20,top+4)==packed(f,effect<0 ? 0xff9292 : 0x18202c));
+        }
+    }
+    /* Ability-only changes redraw the banner, even with identical IVs/EVs/slot. */
+    s.training.ability=62;memset(s.training.ability_name,0,13);memcpy(s.training.ability_name,"GUTS",4);
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);assert(out==hud.output);
+    assert(get(out,pitch,bpp,162,105)==packed(f,0x18202c)); /* G starts one pixel right */
+    assert(get(out,pitch,bpp,163,105)==packed(f,0xffffff));
+    assert(get(out,pitch,bpp,228,105)==packed(f,0x18202c)); /* No stale long-name tail */
+    s.training.ability_known=false;s.training.nature_known=false;
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);assert(out==hud.output);
+    for(unsigned y=104;y<112;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*bpp));
+    s.training.ability_known=true;s.training.ability=255;s.training.nature_known=true;s.training.nature=255;
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);assert(out==hud.output);
+    for(unsigned y=104;y<112;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*bpp));
+    s.training.ability=62;memset(s.training.ability_name,'A',13); /* No NUL in model */
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f);assert(out==hud.output);
+    for(unsigned y=104;y<112;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*bpp));
+    out=type_hud_draw(&hud,&hidden,NULL,w,h,pitch,f);assert(out==hud.clean);
+    for(unsigned y=0;y<h;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*bpp));
+    type_hud_clear(&hud);free(frame);free(original);
+}
 static void preview(const char *path)
 {
     uint32_t frame[160*144];
@@ -228,6 +275,7 @@ int main(int argc,char **argv)
     check(RETRO_PIXEL_FORMAT_0RGB1555); check(RETRO_PIXEL_FORMAT_RGB565); check(RETRO_PIXEL_FORMAT_XRGB8888);
     for(unsigned f=0;f<3;f++){multigen_pane((enum retro_pixel_format)f,1);multigen_pane((enum retro_pixel_format)f,3);}
     for(unsigned f=0;f<3;f++){hidden_power_pixels((enum retro_pixel_format)f,2);hidden_power_pixels((enum retro_pixel_format)f,3);}
+    for(unsigned f=0;f<3;f++)nature_ability_pixels((enum retro_pixel_format)f);
     if(argc==2) preview(argv[1]);
     puts("M4 badge pixels, formats, source immutability, duplicate updates and cleanup passed");
     return 0;

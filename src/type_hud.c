@@ -1,5 +1,6 @@
 #include "type_hud.h"
 #include "hidden_power.h"
+#include "party_details.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -135,10 +136,35 @@ static void hidden_power_row(struct type_hud *h,size_t bpp,const struct training
     char text[8];snprintf(text,sizeof(text),"P %u",(unsigned)hp.power);
     stats_text(h,bpp,left+52,top+4,text,0xffffff);
 }
+static void nature_arrow(struct type_hud *h,size_t bpp,int effect,unsigned left,unsigned top)
+{
+    if(!effect) return;
+    const uint8_t up[]={4,14,31,4,4,4,4},down[]={4,4,4,4,31,14,4};
+    const uint8_t *shape=effect>0 ? up : down;
+    for(unsigned y=0;y<7;y++) for(unsigned x=0;x<5;x++) if(shape[y]&(1u<<(4-x)))
+        pixel(h->output,h->pitch,bpp,left+x,top+y,h->format,effect>0 ? 0x78e6a0 : 0xff9292);
+}
+static void party_details_line(struct type_hud *h,size_t bpp,const struct training_stats *s)
+{
+    const char *nature=s->nature_known ? gen3_nature_name(s->nature) : NULL;
+    bool ability=s->ability_known && s->ability<78;
+    size_t n=strnlen(s->ability_name,sizeof(s->ability_name));
+    if(!n || n>12) ability=false;
+    for(size_t i=0;ability && i<n;i++) if((s->ability_name[i]<'A' || s->ability_name[i]>'Z') && s->ability_name[i]!=' ') ability=false;
+    if(!nature && !ability) return;
+    /* Gap between the original stat windows (end y=103) and EXP area (y=112). */
+    for(unsigned y=104;y<112;y++) for(unsigned x=80;x<240;x++)
+        pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
+    if(nature) {char text[16];snprintf(text,sizeof(text),"N %s",nature);stats_text(h,bpp,82,105,text,0x90c4ff);}
+    if(ability) stats_text(h,bpp,162,105,s->ability_name,0xffffff);
+}
 static void training_cell(struct type_hud *h,size_t bpp,const struct training_stats *s,
                           unsigned stat,unsigned left,unsigned top,const char *label)
 {
-    stats_text(h,bpp,left+2,top,label,0xc0d0e0); char value[6];
+    stats_text(h,bpp,left+2,top,label,0xc0d0e0);
+    if(s->generation==3 && s->nature_known)
+        nature_arrow(h,bpp,gen3_nature_effect(s->nature,stat),left+20,top);
+    char value[6];
     snprintf(value,sizeof(value),"%u",(unsigned)s->dv[stat]);
     stats_text(h,bpp,left+39-(unsigned)strlen(value)*6,top,value,0xffffff);
     snprintf(value,sizeof(value),"%u",(unsigned)s->ev[stat]);
@@ -159,6 +185,7 @@ static void training_table(struct type_hud *h,size_t bpp,const struct training_s
                 unsigned i=col*3+row;training_cell(h,bpp,s,i,left,121+row*10,labels[i]);
             }
         }
+        party_details_line(h,bpp,s);
         unsigned total=0;for(unsigned i=0;i<6;i++) total+=s->ev[i];char text[24];
         snprintf(text,sizeof(text),"EV %u OF 510",total);stats_text(h,bpp,82,152,text,0x90c4ff);
         hidden_power_row(h,bpp,s,160,148);
