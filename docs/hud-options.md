@@ -44,3 +44,5 @@ key collisions, category return semantics, independent display regions,
 compact rows, source immutability and erasure on duplicate frames in all three
 software pixel formats. Real Gambatte/mGBA integration additionally compares
 all backend option definitions before/after wrapping and video/audio/state parity.
+
+`battlehud_training_view` also accepts `details`: Gen 2/3 friendship, gender, Shiny and Pokérus replace the training table. Raw remains the default; Gen 1 keeps raw values. See [party details](party-extras.md).

@@ -37,3 +37,27 @@ bool gen3_ability_read(const struct game_profile *p,training_memory_read read,vo
     if(!letter || i==13) return false;
     *ability=id;memcpy(name,decoded,13);return true;
 }
+
+bool crystal_shiny(const uint8_t dv[6])
+{ return dv && (dv[1]&2) && dv[2]==10 && dv[3]==10 && dv[5]==10; }
+bool emerald_shiny(uint32_t pid,uint32_t ot)
+{ return ((pid&65535)^(pid>>16)^(ot&65535)^(ot>>16))<8; }
+unsigned party_pokerus_state(uint8_t p)
+{ return !p?0:(p&15)?1:2; }
+bool party_gender_read(const struct game_profile *p,training_memory_read read,void *ctx,
+                       uint16_t species,uint32_t determinant,uint8_t *gender)
+{
+    if(!p || !read || !gender || !p->species_info || !species) return false;
+    uint8_t ratio;
+    if(p->generation==2) {
+        uint8_t record[14];
+        if(species>251 || !read(ctx,p->species_info+(species-1)*32,record,14) || record[0]!=species)return false;
+        ratio=record[13];
+    } else if(p->generation==3) {
+        if(species>411 || (species>=252 && species<=276) ||
+           !read(ctx,p->species_info+(size_t)species*28+16,&ratio,1))return false;
+    } else return false;
+    *gender=ratio==255?2:ratio==0?0:ratio==254?1:
+        p->generation==2 ? (determinant&255)<=ratio : (determinant&255)<ratio;
+    return true;
+}

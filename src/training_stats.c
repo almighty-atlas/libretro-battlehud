@@ -93,6 +93,11 @@ static struct training_stats decode_mon(const struct game_profile *p,training_me
             for(unsigned i=0;i<6;i++) {s.base[i]=record[1+(gen==1?order[i]:base_order[i])];if(!s.base[i])valid=false;}
             s.bonus_known=valid;
         }
+        if(gen==2) {
+            s.extras_known=true;s.friendship=temp[27];s.pokerus=temp[28];
+            s.shiny=crystal_shiny(s.dv);
+            s.gender_known=party_gender_read(p,read,ctx,s.species,a*16+v,&s.gender);
+        }
         return s;
     }
     if((temp[19]&7)!=2 || !temp[84] || temp[84]>100) return s;
@@ -121,6 +126,9 @@ static struct training_stats decode_mon(const struct game_profile *p,training_me
     if(p->species_info && read(ctx,p->species_info+(size_t)species*28,base,6)) {
         bool valid=true;for(unsigned i=0;i<6;i++){s.base[i]=base[order[i]];if(!s.base[i])valid=false;}s.bonus_known=valid;
     }
+    s.extras_known=true;s.friendship=clear[pos[0]*12+9];s.pokerus=clear[pos[2]*12];
+    s.shiny=emerald_shiny(pid,le32(temp+4));
+    s.gender_known=party_gender_read(p,read,ctx,s.species,pid,&s.gender);
     s.nature_known=true;s.nature=(uint8_t)(pid%25);s.ability_slot=(uint8_t)(iv>>31);
     s.ability_known=gen3_ability_read(p,read,ctx,species,s.ability_slot,&s.ability,s.ability_name);
     return s;
@@ -145,7 +153,9 @@ struct training_stats training_stats_decode(const struct game_profile *p,trainin
 }
 bool training_stats_equal(const struct training_stats *a,const struct training_stats *b)
 {
-    return a->visible==b->visible && a->generation==b->generation && a->slot==b->slot && a->species==b->species &&
+    return a->extras_known==b->extras_known && a->gender_known==b->gender_known &&
+        a->shiny==b->shiny && a->friendship==b->friendship && a->pokerus==b->pokerus && a->gender==b->gender &&
+        a->visible==b->visible && a->generation==b->generation && a->slot==b->slot && a->species==b->species &&
         a->level==b->level && a->bonus_known==b->bonus_known && a->identity_known==b->identity_known &&
         a->gain_known==b->gain_known && !memcmp(a->base,b->base,6) && !memcmp(a->identity,b->identity,32) &&
         !memcmp(a->gain,b->gain,sizeof(a->gain)) && a->nature_known==b->nature_known && a->ability_known==b->ability_known &&

@@ -191,6 +191,34 @@ static void training_cell(struct type_hud *h,size_t bpp,const struct training_st
     else strcpy(value,"NA");
     stats_text(h,bpp,left+79-(unsigned)strlen(value)*6,top,value,0xffffff);
 }
+static void party_extra_panel(struct type_hud *h,size_t bpp,const struct training_stats *s)
+{
+    unsigned left=s->generation==3?80:0,top=s->generation==3?112:64;
+    unsigned right=s->generation==3?240:80,bottom=s->generation==3?148:132;
+    for(unsigned y=top;y<bottom;y++)for(unsigned x=left;x<right;x++)
+        pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
+    char friendship[14],gender[14],shiny[14],virus[14],effect[14];
+    if(s->extras_known) {
+        snprintf(friendship,sizeof(friendship),"FRIEND %u",s->friendship);
+        snprintf(shiny,sizeof(shiny),"SHINY %s",s->shiny?"YES":"NO");
+        const char *state[]={"NONE","ACTIVE","CURED"};
+        snprintf(virus,sizeof(virus),"PKRS %s",state[party_pokerus_state(s->pokerus)]);
+        if(s->generation==3)snprintf(effect,sizeof(effect),"PKRS EV X%u",s->pokerus?2u:1u);
+        else snprintf(effect,sizeof(effect),"PKRS DAYS %u",s->pokerus&15);
+    } else {strcpy(friendship,"FRIEND NA");strcpy(shiny,"SHINY NA");strcpy(virus,"PKRS NA");strcpy(effect,"PKRS NA");}
+    const char *sex[]={"MALE","FEMALE","NONE"};
+    snprintf(gender,sizeof(gender),"SEX %s",s->gender_known && s->gender<3?sex[s->gender]:"NA");
+    if(s->generation==3) {
+        stats_text(h,bpp,left+2,top+2,friendship,0xffffff);
+        stats_text(h,bpp,left+2,top+13,gender,0xffffff);
+        stats_text(h,bpp,left+2,top+24,shiny,0xffffff);
+        stats_text(h,bpp,left+82,top+2,virus,0xffffff);
+        stats_text(h,bpp,left+82,top+13,effect,0x90c4ff);
+    } else {
+        const char *lines[]={friendship,gender,shiny,virus,effect};
+        for(unsigned i=0;i<5;i++)stats_text(h,bpp,left+2,top+2+i*12,lines[i],i==4?0x90c4ff:0xffffff);
+    }
+}
 static void training_table(struct type_hud *h,size_t bpp,const struct training_stats *s,unsigned options)
 {
     const char *labels[]={"HP","ATK","DEF","SPA","SPD","SPE"};
@@ -288,7 +316,10 @@ const void *type_hud_draw_options(struct type_hud *h, const struct battle_state 
         }
         else if(state->training.visible) {
             const struct training_stats *s=&state->training;
-            if(options&HUD_TRAINING) training_table(h,bpp,s,options);
+            if(options&HUD_TRAINING) {
+                if((options&HUD_EXTRA_VIEW) && s->generation>=2)party_extra_panel(h,bpp,s);
+                else training_table(h,bpp,s,options);
+            }
             if((options&HUD_DETAILS) && s->generation==3) party_details_line(h,bpp,s);
             if((options&HUD_POWER) && (s->generation==2 || s->generation==3)) {
                 unsigned left=s->generation==3 ? 160 : 0,top=s->generation==3 ? 148 : 132;

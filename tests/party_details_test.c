@@ -71,5 +71,28 @@ int main(void)
     assert(!gen3_ability_read(p,read_rom,NULL,412,0,&ability,name));assert(!gen3_ability_read(p,read_rom,NULL,19,2,&ability,name));
     assert(!gen3_ability_read(p,read_rom,NULL,19,0,NULL,name));assert(!gen3_ability_read(p,read_rom,NULL,19,0,&ability,NULL));
     const struct game_profile *gb=game_profile_find("ea9bcae617fdf159b045185467ae58b2e4a48b9a");assert(!gen3_ability_read(gb,read_rom,NULL,19,0,&ability,name));
+    for(unsigned raw=0;raw<65536;raw++) {
+        uint8_t dv[6]={0,(uint8_t)(raw>>12),(uint8_t)((raw>>8)&15),
+            (uint8_t)(raw&15),(uint8_t)(raw&15),(uint8_t)((raw>>4)&15)};
+        const unsigned attack=dv[1];
+        bool expected=(attack==2 || attack==3 || attack==6 || attack==7 || attack==10 || attack==11 || attack==14 || attack==15) &&
+            dv[2]==10 && dv[3]==10 && dv[5]==10;
+        assert(crystal_shiny(dv)==expected);
+    }
+    assert(!crystal_shiny(NULL));
+    for(unsigned v=0;v<65536;v++)assert(emerald_shiny(v,0)==(v<8));
+    assert(emerald_shiny(0x12345678,0x12345678));
+    for(unsigned v=0;v<256;v++)assert(party_pokerus_state(v)==(!v?0:(v&15)?1:2));
+    for(unsigned ratio=0;ratio<256;ratio++)for(unsigned value=0;value<256;value++) {
+        *at(p->species_info+19*28+16)=(uint8_t)ratio;uint8_t sex=99;
+        assert(party_gender_read(p,read_rom,NULL,19,0x12340000+value,&sex));
+        assert(sex==(ratio==255?2:ratio==0?0:ratio==254?1:value<ratio));
+    }
+    missing=p->species_info+19*28+16;uint8_t sex=99;
+    assert(!party_gender_read(p,read_rom,NULL,19,0,&sex) && sex==99);missing=0;
+    assert(!party_gender_read(gb,read_rom,NULL,19,0,&sex));
+    assert(!party_gender_read(p,read_rom,NULL,252,0,&sex));
+    assert(!party_gender_read(p,read_rom,NULL,412,0,&sex));
+    assert(!party_gender_read(NULL,read_rom,NULL,19,0,&sex));
     puts("All 25 natures, HP neutrality, both stored ability slots, all IDs, maximum name length, decoding and missing/invalid ROM data passed");
 }

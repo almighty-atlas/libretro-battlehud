@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 #include "training_stats.h"
+#include "party_details.h"
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -76,6 +77,20 @@ int main(void)
         fixture(0,0,0); put(cases[i].address,cases[i].bad);
         s=training_stats_decode(p,read_ram,NULL); assert(!s.visible);
     }
+    for(unsigned ratio=0;ratio<256;ratio++)for(unsigned value=0;value<256;value++) {
+        rom[0x51424+154*32+13]=(uint8_t)ratio;uint8_t sex=99;
+        assert(party_gender_read(p,read_ram,NULL,155,value,&sex));
+        assert(sex==(ratio==255?2:ratio==0?0:ratio==254?1:value<=ratio));
+    }
+    fixture(3,0x2a,0xaa);ram[0x110e + 27]=255;ram[0x110e + 28]=0x20;
+    memcpy(ram+0x1cdf+3*48,ram+0x110e,48);
+    s=training_stats_decode(p,read_ram,NULL);
+    assert(s.visible && s.slot==3 && s.extras_known && s.friendship==255 && s.pokerus==0x20 && s.shiny && s.gender_known);
+    struct training_stats altered=s;altered.friendship--;assert(!training_stats_equal(&s,&altered));
+    altered=s;altered.pokerus=0;assert(!training_stats_equal(&s,&altered));
+    altered=s;altered.shiny=false;assert(!training_stats_equal(&s,&altered));
+    missing=p->species_info+154*32;s=training_stats_decode(p,read_ram,NULL);
+    assert(s.visible && s.extras_known && s.shiny && !s.gender_known);missing=0;
     assert(!training_stats_decode(NULL,read_ram,NULL).visible);
     assert(!training_stats_decode(p,NULL,NULL).visible);
     puts("Party stats page gating, all slots, HP DV parity, shared Special and big-endian stat exp passed");

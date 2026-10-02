@@ -50,6 +50,8 @@ int main(void)
     value="bonus";assert(hud_options_read(env)==(HUD_DEFAULT|HUD_BONUS));
     value="gains";assert(hud_options_read(env)==(HUD_DEFAULT|HUD_GAINS));
     assert(!strcmp(collision[6].values[2].value,"gains"));
+    value="details";assert(hud_options_read(env)==(HUD_DEFAULT|HUD_EXTRA_VIEW));
+    assert(!strcmp(collision[6].values[3].value,"details"));
     value="invalid";assert(hud_options_read(env)==HUD_DEFAULT);assert(updates==0);
     hud_options_clear();kind=RETRO_ENVIRONMENT_SET_VARIABLES;hud_options_fallback(env);v=received;assert(v[7].key && !v[8].key);hud_options_clear();
     puts("HUD options: legacy/V1/V2, both translations, backend defaults/categories, collision, fallback and updates passed");

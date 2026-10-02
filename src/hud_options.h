@@ -10,6 +10,7 @@
 #define HUD_BONUS 64u
 #define HUD_GAINS 128u
 #define HUD_CATCH 256u
+#define HUD_EXTRA_VIEW 512u
 #define HUD_DEFAULT (HUD_CATCH|HUD_TYPES|HUD_MOVES|HUD_TRAINING|HUD_POWER|HUD_DETAILS)
 /* Registration copies keep backend definitions and translations intact. */
 bool hud_options_register(retro_environment_t cb, unsigned cmd, void *data);

@@ -22,7 +22,9 @@ class TrainingStats(C.Structure):
                 ("nature", C.c_uint8), ("ability", C.c_uint8), ("ability_slot", C.c_uint8),
                 ("ability_name", C.c_char * 13), ("level", C.c_uint8), ("base", C.c_uint8 * 6),
                 ("bonus_known", C.c_bool), ("identity_known", C.c_bool), ("gain_known", C.c_bool),
-                ("identity", C.c_uint8 * 32), ("gain", C.c_uint16 * 6)]
+                ("identity", C.c_uint8 * 32), ("gain", C.c_uint16 * 6),
+                ("extras_known", C.c_bool), ("gender_known", C.c_bool), ("shiny", C.c_bool),
+                ("friendship", C.c_uint8), ("pokerus", C.c_uint8), ("gender", C.c_uint8)]
 
 
 class CatchHint(C.Structure):

@@ -211,3 +211,7 @@ The configured suite now contains 22 CTest cases plus real Gambatte/mGBA
 integration on Linux and native macOS. [Coverage and limits](catch-help.md#validation-and-remaining-acceptance)
 separate automated fixtures from pending interactive Crystal/NextUI acceptance.
 Gen 1/3 catch menus and full-party banked box-capacity reads are not implemented.
+
+## Issue #8: optional party extras
+
+Exhaustive DV Shiny, gender boundaries and Pokérus states; stored fields across all Gen 3 permutations/slots; Gen 1 exclusion; three-format panel bounds/redraw/removal. Manual macOS/NextUI acceptance remains pending. See [details](party-extras.md).

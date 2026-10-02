@@ -44,7 +44,7 @@ static void kanto_test(const char *hash)
         const uint8_t base[]={44,48,65,50,50,43};
         assert(s.level==12 && s.bonus_known && s.identity_known && !memcmp(s.base,base,6));
         struct training_stats direct=training_party_mon(p,read_memory,NULL,slot);assert(training_stats_equal(&s,&direct));
-        assert(s.visible && s.generation==1 && s.slot==slot && s.species==177 && !s.nature_known && !s.ability_known);
+        assert(s.visible && s.generation==1 && s.slot==slot && s.species==177 && !s.nature_known && !s.ability_known && !s.extras_known && !s.gender_known && !s.shiny);
         assert(!memcmp(s.dv,dv,6) && !memcmp(s.ev,ev,sizeof(ev)) && !memcmp(before,gb,sizeof(gb)));
         struct battle_state state=battle_decode(p,read_memory,NULL);assert(state.status==BATTLE_OUTSIDE && state.training.visible);
     }
@@ -77,9 +77,9 @@ static void emerald_fixture(const struct game_profile *p,unsigned slot,unsigned 
     uint8_t clear[48]={0};uint32_t iv=31u|(1u<<5)|(17u<<10)|(2u<<15)|(29u<<20)|(3u<<25);
     for(unsigned block=0;block<4;block++) {
         uint8_t *b=clear+block*12;
-        if(orders[pid%24][block]=='G') {b[0]=(uint8_t)fixture_species;b[1]=(uint8_t)(fixture_species>>8);}
+        if(orders[pid%24][block]=='G') {b[0]=(uint8_t)fixture_species;b[1]=(uint8_t)(fixture_species>>8);b[9]=231;}
         if(orders[pid%24][block]=='E') {const uint8_t ev[]={0,1,252,4,128,125};memcpy(b,ev,6);if(variant){memset(b,0,6);b[0]=b[1]=255;}}
-        if(orders[pid%24][block]=='M')put32(b+4,iv | (variant==3 ? 1u<<30 : 0) | (ability_slot ? 1u<<31 : 0));
+        if(orders[pid%24][block]=='M'){b[0]=0x20;put32(b+4,iv | (variant==3 ? 1u<<30 : 0) | (ability_slot ? 1u<<31 : 0));}
         if(variant==2 && orders[pid%24][block]=='E') b[2]=1;
         if(variant==4 && orders[pid%24][block]=='G') b[0]=b[1]=0;
         if(variant==5 && orders[pid%24][block]=='G') {b[0]=252;b[1]=0;}
@@ -100,6 +100,7 @@ static void emerald_test(void)
         assert(s.level==12 && s.bonus_known && s.identity_known && !memcmp(s.base,base,6));
         struct training_stats direct=training_party_mon(p,read_memory,NULL,slot);assert(training_stats_equal(&s,&direct));
         assert(s.visible && s.slot==slot && s.species==277 && s.generation==3);
+        assert(s.extras_known && s.friendship==231 && s.pokerus==0x20 && s.gender_known && s.gender==0 && !s.shiny);
         assert(s.nature_known && s.nature==(24*12345+permutation)%25);
         assert(s.ability_known && s.ability==65 && s.ability_slot==0 && !strcmp(s.ability_name,"OVERGROW"));
         assert(!memcmp(s.dv,iv,6) && !memcmp(s.ev,ev,sizeof(ev)) && !memcmp(before,at(summary+12,100),100));

@@ -317,6 +317,20 @@ static void preferences(enum retro_pixel_format f)
         s.training.gain_known=true;s.training.gain[0]=gen==3?4:12345;
         out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_GAINS);assert(out);
         assert(memcmp(no_gain,out,pitch*h));
+        if(gen>=2) {
+            s.training.extras_known=true;s.training.gender_known=true;s.training.gender=1;
+            s.training.friendship=255;s.training.pokerus=0x23;s.training.shiny=true;
+            out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_EXTRA_VIEW);assert(out);
+            for(unsigned y=0;y<h;y++)for(unsigned x=0;x<w;x++)if(x<left || x>=left+(gen==3?160:80) || y<top || y>= (gen==3?148:132))
+                assert(get(out,pitch,size,x,y)==get(frame,pitch,size,x,y));
+            uint8_t extra_frame[sizeof(frame)];memcpy(extra_frame,out,pitch*h);
+            s.training.friendship=0;s.training.gender=2;s.training.shiny=false;s.training.pokerus=0x20;
+            out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_EXTRA_VIEW);assert(out && memcmp(extra_frame,out,pitch*h));
+            memcpy(extra_frame,out,pitch*h);s.training.pokerus=0;
+            out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_EXTRA_VIEW);assert(out && memcmp(extra_frame,out,pitch*h));
+            s.training.extras_known=false;s.training.gender_known=false;
+            out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING|HUD_EXTRA_VIEW);assert(out);
+        }
         out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,HUD_TRAINING);assert(out);
         out=type_hud_draw_options(&hud,&s,NULL,w,h,pitch,f,0);assert(out);
         for(unsigned y=0;y<h;y++)assert(!memcmp((const uint8_t *)out+y*pitch,frame+y*pitch,w*size));

@@ -86,3 +86,5 @@ observed last-battle gains and the remaining Gen 3 EV budget. See
 
 Crystal now has a selected-ball [catch estimate](docs/catch-help.md) in its
 wild-battle BALL list, with original ball/status bugs and explicit NA handling.
+
+Optional Gen 2/3 party extras: Training view → details. See [friendship, gender, Shiny and Pokérus](docs/party-extras.md).
