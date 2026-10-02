@@ -53,6 +53,7 @@ static void pixel(uint8_t *out, size_t pitch, size_t bpp, unsigned x, unsigned y
 static bool valid_type(enum pokemon_type type) { return type>=TYPE_NORMAL && type<=TYPE_FAIRY; }
 static bool fits(const struct battle_state *s, unsigned width, unsigned height)
 {
+    if(s->catch_hint.visible && s->generation==2 && s->status==BATTLE_ACTIVE && s->mode==1 && !s->main_menu && !s->fight_menu) return width==160 && height==144;
     if(s->training.visible) return s->training.generation==3 ?
         width==240 && height==160 : (s->training.generation==1 || s->training.generation==2) && width==160 && height==144;
     if(s->status!=BATTLE_ACTIVE || (!s->main_menu && !s->fight_menu) || !s->species || !valid_type(s->type1) ||
@@ -127,6 +128,14 @@ static void stats_text(struct type_hud *h,size_t bpp,unsigned left,unsigned top,
     for(unsigned i=0;text[i];i++) {
         int index=text[i]>='A' && text[i]<='Z' ? text[i]-'A' :
             text[i]>='0' && text[i]<='9' ? text[i]-'0'+26 : -1;
+        if(text[i]=='.'){pixel(h->output,h->pitch,bpp,left+i*6+2,top+6,h->format,rgb);continue;}
+        if(text[i]=='%' || text[i]=='~') {
+            static const uint8_t percent[]={25,26,2,4,8,11,19},approx[]={0,0,9,22,0,0,0};
+            const uint8_t *glyph=text[i]=='%'?percent:approx;
+            for(unsigned y=0;y<7;y++)for(unsigned x=0;x<5;x++)if(glyph[y]&(1u<<(4-x)))
+                pixel(h->output,h->pitch,bpp,left+i*6+x,top+y,h->format,rgb);
+            continue;
+        }
         if(index<0) continue;
         for(unsigned y=0;y<7;y++) for(unsigned x=0;x<5;x++)
             if(stats_font[index][y] & (1u<<(4-x)))
@@ -219,6 +228,18 @@ static void training_table(struct type_hud *h,size_t bpp,const struct training_s
     if(s->generation==1 && !(options&HUD_COMPACT)) stats_text(h,bpp,left+2,137,
         options&HUD_GAINS?(s->gain_known?"LAST BATTLE":"NO BASELINE"):options&HUD_BONUS?"STAT BONUS":"STAT EXP",0x90c4ff);
 }
+static void catch_panel(struct type_hud *h,size_t bpp,const struct catch_hint *s)
+{
+    const char *name=crystal_ball_name(s->ball);if(!name)return;
+    /* Replace the small pack illustration only: x=0..47,y=16..51.
+     * Pocket title, scrolling item names/quantities, cursor and description stay intact. */
+    for(unsigned y=16;y<52;y++)for(unsigned x=0;x<48;x++)pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
+    stats_text(h,bpp,2,18,"CATCH",0x90c4ff);char text[12];
+    if(s->known && s->permyriad<=10000) {
+        unsigned tenths=s->permyriad/10;snprintf(text,sizeof(text),"~%u.%u%%",tenths/10,tenths%10);
+    } else strcpy(text,"NA");
+    stats_text(h,bpp,2,29,text,0xffffff);stats_text(h,bpp,2,41,name,0xc0d0e0);
+}
 static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
 {
     if(bytes<=*capacity) return true;
@@ -261,7 +282,11 @@ const void *type_hud_draw_options(struct type_hud *h, const struct battle_state 
     if(active && reserve(&h->output,&h->output_capacity,bytes)) {
         for(unsigned y=0;y<height;y++)
             memcpy(h->output+(size_t)y*pitch,h->clean+(size_t)y*pitch,row_bytes);
-        if(state->training.visible) {
+        if(state->catch_hint.visible && state->generation==2 && state->status==BATTLE_ACTIVE && state->mode==1 &&
+           !state->main_menu && !state->fight_menu) {
+            if(options&HUD_CATCH)catch_panel(h,bpp,&state->catch_hint);
+        }
+        else if(state->training.visible) {
             const struct training_stats *s=&state->training;
             if(options&HUD_TRAINING) training_table(h,bpp,s,options);
             if((options&HUD_DETAILS) && s->generation==3) party_details_line(h,bpp,s);
@@ -272,7 +297,7 @@ const void *type_hud_draw_options(struct type_hud *h, const struct battle_state 
                 hidden_power_row(h,bpp,s,left,top);
             }
         }
-        else {
+        else if(state->main_menu || state->fight_menu) {
             if((options&HUD_TYPES) && !state->ambiguous_target) badge(h,bpp,state->type1,2);
             if((options&HUD_TYPES) && !state->ambiguous_target && state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
             if(options&HUD_MOVES) move_hints(h,bpp,state);

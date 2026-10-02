@@ -7,6 +7,7 @@ international registration formats are supported. HUD descriptions use English.
 
 | Option key | Label | Values / behavior |
 | --- | --- | --- |
+| `battlehud_catch` | BattleHUD: Catch estimate | `enabled` / `disabled`; initial Crystal wild-battle BALL list estimate; missing inputs show NA. See [catch rules and limits](catch-help.md). |
 | `battlehud_types` | BattleHUD: Type icons | `enabled` / `disabled`; opponent badges in recognized battle menus |
 | `battlehud_moves` | BattleHUD: Move effectiveness | `enabled` / `disabled`; independent FIGHT hints |
 | `battlehud_training` | BattleHUD: Training values | `enabled` / `disabled`; DV/IV and training table |

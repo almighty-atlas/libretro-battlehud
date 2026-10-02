@@ -25,11 +25,14 @@ class TrainingStats(C.Structure):
                 ("identity", C.c_uint8 * 32), ("gain", C.c_uint16 * 6)]
 
 
+class CatchHint(C.Structure):
+    _fields_ = [("visible",C.c_bool),("known",C.c_bool),("master",C.c_bool),("ball",C.c_uint8),("permyriad",C.c_uint16)]
+
 class BattleState(C.Structure):
     _fields_ = [("status", C.c_int), ("mode", C.c_uint8), ("species", C.c_uint16),
                 ("type1", C.c_int), ("type2", C.c_int),
                 ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8), ("main_menu", C.c_bool), ("fight_menu", C.c_bool),
-                ("moves", C.c_uint16 * 4), ("effectiveness", C.c_uint8 * 4), ("training", TrainingStats), ("generation", C.c_uint8), ("ambiguous_target", C.c_bool)]
+                ("moves", C.c_uint16 * 4), ("effectiveness", C.c_uint8 * 4), ("training", TrainingStats), ("generation", C.c_uint8), ("ambiguous_target", C.c_bool), ("catch_hint",CatchHint)]
 
 
 class TypeHud(C.Structure):
@@ -279,6 +282,36 @@ def worker(core_path, directory):
         assert red.generation == 1 and red.fight_menu and red.species == 16
         assert list(red.moves) == [85, 33, 68, 45]
         assert list(red.effectiveness) == [1, 3, 0, 5]
+        # Ball-list component fixture over real emulated RAM/pixels. The test host
+        # restores its mutations before parity/state checks; the decoder is read-only.
+        bag = {0xcf65:1,0xcf63:4,0xcf86:0xb7,0xcf87:0x4a,0xcf8a:4,
+               0xcf82:1,0xcf83:7,0xcf84:13,0xcf85:19,0xcf92:5,0xcf93:8,
+               0xcf94:2,0xcf95:0,0xcf96:0xd7,0xcf97:0xd8,0xcfa9:1,0xd0e4:0,
+               0xd8d7:1,0xd8d8:5,0xd8d9:10,0xd106:5,0xcf74:5,
+               0xc4cf:0xed,0xd230:0,0xd204:16,0xd22b:255,0xd214:0,0xdcd7:1}
+        bag.update({0xc4a0+i:0x28+i for i in range(20)})
+        saved = {a:C.c_uint8.from_address(ram+a-0xc000).value for a in bag}
+        try:
+            for a,v in bag.items():C.c_uint8.from_address(ram+a-0xc000).value=v
+            catch = decode(find(b"f2f52230b536214ef7c9924f483392993e226cfb"),read_fixture,None)
+            assert catch.catch_hint.visible and catch.catch_hint.known and catch.catch_hint.ball==5
+            assert catch.catch_hint.permyriad==3359 and not catch.main_menu and not catch.fight_menu
+            hud=TypeHud();rendered=draw(C.byref(hud),C.byref(catch),frame_buffer,width,height,pitch,fmt)
+            assert rendered and rendered!=C.addressof(frame_buffer)
+            for y in range(height):
+                for x in range(width):
+                    if not (x<48 and 16<=y<52):
+                        offset=y*pitch+x*bpp
+                        assert C.string_at(rendered+offset,bpp)==original[offset:offset+bpp]
+            catch.catch_hint.visible=False
+            clean=draw(C.byref(hud),C.byref(catch),None,width,height,pitch,fmt)
+            assert clean
+            for y in range(height):assert C.string_at(clean+y*pitch,width*bpp)==original[y*pitch:y*pitch+width*bpp]
+            clear(C.byref(hud))
+            assert frame_buffer.raw==original
+        finally:
+            for a,v in saved.items():C.c_uint8.from_address(ram+a-0xc000).value=v
+        print("Crystal ball selection/estimate/pane/removal real-Gambatte component fixture passed")
         getter = core.battlehud_get_battle_state
         getter.argtypes, getter.restype = [C.POINTER(BattleState)], C.c_bool
         assert not getter(C.byref(snapshot)), "original ROM must stay unsupported"
@@ -332,7 +365,7 @@ def main():
     direct_options = results[0].pop("options")
     proxy_options = results[1].pop("options")
     assert direct_options and all(proxy_options.get(k) == v for k, v in direct_options.items())
-    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout", "battlehud_training_view"}
+    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout", "battlehud_training_view", "battlehud_catch"}
     assert set(proxy_options) - set(direct_options) == expected
     assert results[0] == results[1], results
     label = "marker and non-marker-area parity" if marker_test else "direct/proxy parity"

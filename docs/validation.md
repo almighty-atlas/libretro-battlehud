@@ -203,3 +203,11 @@ party observation and raw/BON/GAIN/NA renderer switching. See
 The configured test suite now contains 21 CTest cases; the CI also runs real
 Gambatte/mGBA direct-versus-proxy integration on Linux and Apple Silicon.
 The new training views have not yet been manually accepted on macOS or NextUI.
+
+## Issue #7: initial Crystal catch helper
+
+Local original-rule catch/menu/decoder/renderer tests and ASan/UBSan pass.
+The configured suite now contains 22 CTest cases plus real Gambatte/mGBA
+integration on Linux and native macOS. [Coverage and limits](catch-help.md#validation-and-remaining-acceptance)
+separate automated fixtures from pending interactive Crystal/NextUI acceptance.
+Gen 1/3 catch menus and full-party banked box-capacity reads are not implemented.

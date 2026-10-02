@@ -184,6 +184,15 @@ static void update_battle(void)
                         pokemon_type_name(hp.type),(unsigned)hp.power);
         } else fprintf(stderr,"battlehud: stats hidden\n");
     }
+    if(debug_enabled && (battle.catch_hint.visible!=next.catch_hint.visible || battle.catch_hint.known!=next.catch_hint.known ||
+        battle.catch_hint.ball!=next.catch_hint.ball || battle.catch_hint.permyriad!=next.catch_hint.permyriad)) {
+        if(next.catch_hint.visible) {
+            const char *name=crystal_ball_name(next.catch_hint.ball);
+            if(next.catch_hint.known)fprintf(stderr,"battlehud: catch %s estimate=%u.%02u%%\n",name?name:"UNKNOWN",
+                next.catch_hint.permyriad/100,next.catch_hint.permyriad%100);
+            else fprintf(stderr,"battlehud: catch %s estimate=unavailable\n",name?name:"UNKNOWN");
+        } else fprintf(stderr,"battlehud: catch hidden (menu change)\n");
+    }
     battle = next;
 }
 

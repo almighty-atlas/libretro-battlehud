@@ -2,6 +2,7 @@
 #define BATTLEHUD_BATTLE_DECODER_H
 #include "game_profile.h"
 #include "training_stats.h"
+#include "catch_chance.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -27,6 +28,7 @@ struct battle_state {
     struct training_stats training;
     uint8_t generation;
     bool ambiguous_target;
+    struct catch_hint catch_hint;
 };
 typedef bool (*battle_memory_read)(void *context, size_t address, void *out, size_t size);
 struct battle_state battle_decode(const struct game_profile *profile,

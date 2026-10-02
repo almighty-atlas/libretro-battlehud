@@ -83,3 +83,6 @@ with detailed/compact training layouts. See [HUD preferences](docs/hud-options.m
 Training views now include raw values, generation-specific stat contributions,
 observed last-battle gains and the remaining Gen 3 EV budget. See
 [training progress](docs/training-progress.md).
+
+Crystal now has a selected-ball [catch estimate](docs/catch-help.md) in its
+wild-battle BALL list, with original ball/status bugs and explicit NA handling.

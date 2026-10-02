@@ -290,7 +290,7 @@ def main():
     direct_options = results[0].pop("options")
     proxy_options = results[1].pop("options")
     assert direct_options and all(proxy_options.get(k) == v for k, v in direct_options.items())
-    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout", "battlehud_training_view"}
+    expected = {"battlehud_types", "battlehud_moves", "battlehud_training", "battlehud_hidden_power", "battlehud_party_details", "battlehud_layout", "battlehud_training_view", "battlehud_catch"}
     assert set(proxy_options) - set(direct_options) == expected
     assert results[0] == results[1], results
     print("Real mGBA direct/proxy video/audio/RAM/state parity and Emerald decoder/renderer fixture passed", results[0])

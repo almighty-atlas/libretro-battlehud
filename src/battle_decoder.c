@@ -1,6 +1,7 @@
 #include "battle_decoder.h"
 #include "move_effectiveness.h"
 #include "multigen_battle.h"
+#include "catch_decoder.h"
 #include <string.h>
 bool gen2_type_decode(uint8_t raw, enum pokemon_type *type)
 {
@@ -118,11 +119,14 @@ struct battle_state battle_decode(const struct game_profile *p,
             }
         }
     }
+    s.catch_hint=catch_decode(p,read,context,&s);
     return s;
 }
 bool battle_state_equal(const struct battle_state *a, const struct battle_state *b)
 {
-    return a->generation==b->generation && a->ambiguous_target==b->ambiguous_target &&
+    return a->catch_hint.visible==b->catch_hint.visible && a->catch_hint.known==b->catch_hint.known &&
+        a->catch_hint.master==b->catch_hint.master && a->catch_hint.ball==b->catch_hint.ball &&
+        a->catch_hint.permyriad==b->catch_hint.permyriad && a->generation==b->generation && a->ambiguous_target==b->ambiguous_target &&
         a->status==b->status && a->mode==b->mode && a->species==b->species &&
         a->type1==b->type1 && a->type2==b->type2 && a->raw_type1==b->raw_type1 &&
         a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu && a->fight_menu==b->fight_menu &&

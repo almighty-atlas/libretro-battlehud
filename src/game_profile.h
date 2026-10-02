@@ -10,6 +10,11 @@ struct gba_battle_profile {
     uint32_t controllers,exec,buffer,disable,bg_scroll;
     uint32_t action_input,move_input;
 };
+struct catch_profile {
+    uint16_t menu_pointer,pocket,borders,geometry,cursor,scroll,balls,current_item,selection,tilemap,switch_item;
+    uint16_t battle_type,original_enemy,original_player,catch_rate,enemy_status,player_level,player_slot,enemy_dvs;
+    uint32_t dex_pointers,dex_banks;
+};
 struct game_profile {
     const char *id, *sha1, *backend_name;
     uint8_t generation;
@@ -30,6 +35,7 @@ struct game_profile {
     uint32_t species_info, ability_names, mew_info;
     uint16_t enemy_identity,battle_type,escaped,move_rows;
     struct gba_battle_profile gba_battle;
+    struct catch_profile catch_profile;
 };
 const struct game_profile *game_profile_find(const char *sha1);
 #endif

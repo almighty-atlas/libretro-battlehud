@@ -351,6 +351,30 @@ static void multigen_battle_pixels(enum retro_pixel_format f,unsigned gen)
     for(size_t j=0;j<sizeof(input);j++)assert(input[j]==0x5a);
     type_hud_clear(&hud);
 }
+static void catch_pixels(enum retro_pixel_format f)
+{
+    size_t size=bpp(f),pitch=160*size+7,bytes=pitch*144;
+    uint8_t *input=malloc(bytes),*saved=malloc(bytes);assert(input && saved);memset(input,0x5a,bytes);
+    struct type_hud hud={0};struct battle_state s={0};s.status=BATTLE_ACTIVE;s.mode=1;s.generation=2;s.species=161;
+    s.catch_hint=(struct catch_hint){.visible=true,.known=true,.ball=5,.permyriad=3359};
+    const void *out=type_hud_draw(&hud,&s,input,160,144,pitch,f);assert(out && out!=input);
+    for(unsigned y=0;y<144;y++)for(unsigned x=0;x<160;x++)if(!(x<48 && y>=16 && y<52))
+        assert(get(out,pitch,size,x,y)==get(input,pitch,size,x,y));
+    assert(get(out,pitch,size,0,16)==packed(f,0x18202c));memcpy(saved,out,bytes);
+    assert(!type_hud_draw(&hud,&s,NULL,160,144,pitch,f));
+    s.catch_hint.permyriad=9999;out=type_hud_draw(&hud,&s,NULL,160,144,pitch,f);assert(out && memcmp(saved,out,bytes));memcpy(saved,out,bytes);
+    s.catch_hint.known=false;out=type_hud_draw(&hud,&s,NULL,160,144,pitch,f);assert(out && memcmp(saved,out,bytes));
+    s.catch_hint.ball=1;s.catch_hint.known=s.catch_hint.master=true;s.catch_hint.permyriad=10000;
+    out=type_hud_draw(&hud,&s,NULL,160,144,pitch,f);assert(out);
+    out=type_hud_draw_options(&hud,&s,NULL,160,144,pitch,f,HUD_DEFAULT&~HUD_CATCH);assert(out);
+    for(unsigned y=0;y<144;y++)assert(!memcmp((const uint8_t *)out+y*pitch,input+y*pitch,160*size));
+    s.catch_hint.visible=false;out=type_hud_draw(&hud,&s,NULL,160,144,pitch,f);assert(out);
+    for(unsigned y=0;y<144;y++)assert(!memcmp((const uint8_t *)out+y*pitch,input+y*pitch,160*size));
+    for(size_t i=0;i<bytes;i++)assert(input[i]==0x5a);
+    s.catch_hint.visible=true;s.mode=2;out=type_hud_draw(&hud,&s,NULL,160,144,pitch,f);assert(out);
+    assert(get(out,pitch,size,0,16)==get(input,pitch,size,0,16));
+    type_hud_clear(&hud);free(input);free(saved);
+}
 int main(int argc,char **argv)
 {
     check(RETRO_PIXEL_FORMAT_0RGB1555); check(RETRO_PIXEL_FORMAT_RGB565); check(RETRO_PIXEL_FORMAT_XRGB8888);
@@ -359,6 +383,7 @@ int main(int argc,char **argv)
     for(unsigned f=0;f<3;f++)nature_ability_pixels((enum retro_pixel_format)f);
     for(unsigned f=0;f<3;f++)preferences((enum retro_pixel_format)f);
     for(unsigned f=0;f<3;f++){multigen_battle_pixels((enum retro_pixel_format)f,1);multigen_battle_pixels((enum retro_pixel_format)f,3);}
+    for(unsigned f=0;f<3;f++)catch_pixels((enum retro_pixel_format)f);
     if(argc==2) preview(argv[1]);
     puts("M4 badge pixels, formats, source immutability, duplicate updates and cleanup passed");
     return 0;
