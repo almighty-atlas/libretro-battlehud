@@ -81,6 +81,22 @@ int main(void)
     s=battle_decode(p,read_ram,NULL); assert(s.status==BATTLE_ACTIVE && !s.main_menu);
     missing_address=0; s=battle_decode(p,read_ram,NULL); assert(s.main_menu);
     previous=s;
+    /* FIGHT is a separate custom 2D menu, including disabled-move info. */
+    put(0xcf86,0); put(0xd235,0);
+    put(0xcfa1,13); put(0xcfa2,5); put(0xcfa3,2); put(0xcfa4,1); put(0xcfa7,0x10);
+    put(0xc540,0x79); put(0xc54a,0x7b); put(0xc5f8,0x7d); put(0xc607,0x7e);
+    s=battle_decode(p,read_ram,NULL); assert(!s.main_menu && s.fight_menu);
+    put(0xc555,0); /* TYPE text may be absent for a disabled move. */
+    s=battle_decode(p,read_ram,NULL); assert(s.fight_menu);
+    put(0xd235,2); s=battle_decode(p,read_ram,NULL); assert(!s.fight_menu); /* Ether menu */
+    put(0xd235,1); s=battle_decode(p,read_ram,NULL); assert(!s.fight_menu); /* Enemy moves */
+    put(0xd235,0); put(0xcfa1,9); s=battle_decode(p,read_ram,NULL); assert(!s.fight_menu);
+    put(0xcfa1,13); put(0xcfa3,5); s=battle_decode(p,read_ram,NULL); assert(!s.fight_menu);
+    put(0xcfa3,2); put(0xc5f8,0x7a); s=battle_decode(p,read_ram,NULL); assert(!s.fight_menu);
+    put(0xc5f8,0x7d); missing_address=0xcfa7;
+    s=battle_decode(p,read_ram,NULL); assert(!s.fight_menu);
+    missing_address=0; put(0xcfa1,0); menu();
+    s=battle_decode(p,read_ram,NULL); previous=s;
     assert(battle_state_equal(&previous,&s));
     /* Trainer Geodude followed by Zubat: no species/type cache. */
     put(0xd22d,2); enemy(74,5,4);

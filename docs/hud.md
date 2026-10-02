@@ -1,10 +1,10 @@
 # Type HUD (M4)
 
 Recognized Crystal Rev. 1 battles display one or two colored badges at the upper
-right **only in the normal FIGHT / PKMN / PACK / RUN main menu**. Labels use English type names in an original 5×7 bitmap
+right **in the normal FIGHT / PKMN / PACK / RUN main menu and in FIGHT move selection**. Labels use English type names in an original 5×7 bitmap
 font, with a dark border and white text. Identical types produce one badge. The
 model is read at the core's video callback before composition, so the rendered
-state belongs to that frame. Outside battle, in bag/party/move submenus and action text, and during
+state belongs to that frame. Outside battle, in bag/party submenus and action text, and during
 invalid/unavailable or start/switch/faint transitions, no badges are drawn.
 The profile checks the menu-data pointer/bank plus all four RAM tilemap labels;
 missing or mismatched data hides the badges without discarding the combatant.

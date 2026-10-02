@@ -57,6 +57,11 @@ static void check(enum retro_pixel_format f)
         assert(get(out,pitch,size,x,y)==get(input,pitch,size,x,y));
     unsigned grass_left=121;
     assert(get(out,pitch,size,grass_left+1,3)==packed(f,0x427033));
+    /* Main menu -> FIGHT retains badges on the same clean frame. */
+    s.main_menu=false; s.fight_menu=true;
+    out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==output);
+    assert(get(out,pitch,size,grass_left+1,3)==packed(f,0x427033));
+    s.fight_menu=false;
     /* Enter a submenu on a duplicate: the enemy stays valid, badges vanish. */
     s.main_menu=false;
     out=type_hud_draw(&hud,&s,NULL,w,h,pitch,f); assert(out==clean);

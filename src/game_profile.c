@@ -20,6 +20,15 @@ static const struct game_profile crystal_rev1 = {
         {0xc5c8, 2, {0xe1, 0xe2}},                   /* PKMN */
         {0xc5ea, 4, {0x8f, 0x80, 0x82, 0x8a}},       /* PACK */
         {0xc5f0, 3, {0x91, 0x94, 0x8d}}              /* RUN */
+    },
+    .move_menu_type = 0xd235, .move_geometry = 0xcfa1,
+    .move_cursor_offsets = 0xcfa7,
+    .move_origin_y = 13, .move_origin_x = 5, .move_max_rows = 4, .move_offset = 0x10,
+    /* MoveInfoBox corners (0,8)/(10,8), move list bottom (4,17)/(19,17).
+     * Corners remain valid for disabled moves; TYPE text does not. */
+    .move_menu_labels = {
+        {0xc540, 1, {0x79}}, {0xc54a, 1, {0x7b}},
+        {0xc5f8, 1, {0x7d}}, {0xc607, 1, {0x7e}}
     }
 };
 const struct game_profile *game_profile_find(const char *sha1)

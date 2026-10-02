@@ -151,3 +151,27 @@ Renderer tests cover submenu entry/return on duplicate frames while preserving
 the enemy model. Real-Gambatte synthetic fixture coverage includes the menu RAM
 and renderer removal when `main_menu` becomes false. Actual bag/party/move screen
 entry/return is pending the user's new Mac test.
+
+
+### Confirmed bag visibility and FIGHT exception
+
+On 2026-10-02 the user confirmed that commit
+`fe959fd2f6b8b3798b272aa45cfe3638930d8ffc` shows badges in the main menu, hides them
+in PACK and restores them when returning ("funktioniert perfekt"). The user then
+requested that FIGHT move selection also show badges and waived a separate manual
+test of that change. Automated decoder/renderer fixtures cover normal/disabled
+move selection, PP-item/enemy menus, stale geometry/boxes and duplicate-frame
+main/FIGHT/hidden transitions. FIGHT visibility is not recorded as manually tested.
+
+## M5 NextUI H700 package — prepared, device acceptance pending
+
+The isolated PBH package uses the verified custom `Emus/h700/PBH.pak` override and
+ROM folder tag `(PBH)`. It keeps the frontend core filename `gambatte_libretro.so`,
+loads the firmware's original core read-only via the backend environment override,
+and isolates test saves/options/states under PBH. It replaces no firmware file.
+
+A host test verifies the ZIP architecture/layout/modes, manifest, launcher path
+quoting with spaces/apostrophes, backend/argument forwarding, missing-environment
+failure and preservation of original GBC save/backend/ROM bytes. This is a mocked
+launcher and packaging check, not a MinArch/device run. The suite has 14 CTest cases.
+Physical SP startup, input/audio, HUD, saves and suspend/resume remain pending.

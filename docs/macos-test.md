@@ -110,7 +110,7 @@ and save-state restoration are later interactive checks. Type badges arrive in M
 
 ## M4 visual HUD test
 
-Use `battlehud-macos-arm64-m4-menu`, quit RetroArch and replace the previous wrapper.
+Use `battlehud-macos-arm64-m4-fight`, quit RetroArch and replace the previous wrapper.
 The supported Crystal profile now enables badges by default; no marker setting
 is required. For quieter terminal output while testing:
 
@@ -131,8 +131,7 @@ badge placement obscures important game information. Use
 comparison; diagnostics can stay enabled.
 
 
-The refined M4 build shows badges only in FIGHT / PKMN / PACK / RUN. First verify:
-open PACK → badges disappear, cancel back → badges reappear. Then repeat for PKMN
-and FIGHT (move selection). Diagnostics show `hidden (battle submenu)` while the
+The refined M4 build shows badges in FIGHT / PKMN / PACK / RUN and FIGHT move selection. First verify:
+open PACK → badges disappear, cancel back → badges reappear. Then repeat for PKMN. FIGHT move selection now keeps the badges visible. Diagnostics show `hidden (battle submenu)` while the
 combatant remains available internally. Special contest/mobile menus are not
 enabled by the normal-menu signature.

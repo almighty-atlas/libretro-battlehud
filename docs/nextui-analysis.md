@@ -43,10 +43,11 @@ Important packaging detail: `Core_getName` derives the core name from the **file
 directories include that name, so changing the filename can hide existing settings
 and states even when the backend format stays compatible.
 
-M5 should preserve the frontend-facing filename where continuity is intended:
-install the wrapper as `gambatte_libretro.so` and the matching original core beside
-it as `gambatte_real_libretro.so`. Do this in an isolated test package first. Preserve
-the original core for rollback and verify state/SRAM continuity before replacement.
+M5 preserves the frontend-facing filename `gambatte_libretro.so` inside an isolated
+PBH package. It references the existing firmware Gambatte through the explicit
+backend environment path; there is no firmware core replacement or backend copy.
+The PBH ROM tag isolates test saves/settings/states from normal GBC use. See
+[package installation and acceptance](nextui-package.md).
 Both libraries must match the device architecture and userspace ABI. Package-specific
 paths belong outside the portable runtime.
 
@@ -83,10 +84,10 @@ glibc 2.35. Do not substitute a current desktop Linux compiler's sysroot for it.
 The H700 [platform flags](https://github.com/pvaibhav/NextUI/blob/cd73cd85c08449d939b7bfcb2e1ed3ed721f1dfa/workspace/h700/platform/makefile.env)
 target Cortex-A53.
 
-CI builds the M0 wrapper with that toolchain, disables native host tests in the
+CI builds the wrapper with that toolchain, disables native host tests in the
 cross build, verifies ELF64/AArch64/shared-object headers, and uploads the
-`battlehud-h700-m1` artifact. This is a test binary, not an installer or completed
-M5 package. The image currently follows upstream's mutable `latest` tag; pin its
+`battlehud-h700-m4-fight` binary plus `battlehud-nextui-h700-pak` test package.
+Packaging is prepared; physical M5 device acceptance remains pending. The image currently follows upstream's mutable `latest` tag; pin its
 digest before publishing a reproducible release.
 
 To build with Docker from the repository root:
@@ -102,8 +103,7 @@ docker run --rm -v "$PWD:/root/workspace" -w /root/workspace \
   '
 ```
 
-The next M0 gate is a target-frontend run: start a GB/GBC game, check video/audio/input,
-change a Gambatte option, save/reload SRAM and a save state, and quit/relaunch cleanly.
-The desktop gate can be satisfied first under macOS/RetroArch; H700 device checks
-remain outstanding. See [recorded validation](validation.md). Automated headless Gambatte parity complements these
-checks; it does not replace them. M1 starts after this gate is satisfied.
+Desktop M0–M3 checks and initial M4 visual/bag visibility have passed. The next
+physical gate is the isolated PBH package on the user's H700 SP. Cross compilation
+and launcher mocks complement but do not replace device testing. See
+[recorded validation](validation.md) for the exact scope of the completed checks.

@@ -41,6 +41,9 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 )
 
 if(BUILD_TESTING)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_test(NAME nextui_package COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/nextui_package_test.py)
     add_executable(type_hud_test tests/type_hud_test.c src/type_hud.c src/battle_decoder.c)
     target_include_directories(type_hud_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -102,6 +105,6 @@ if(BUILD_TESTING)
         $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_bad_api> failure)
     add_test(NAME proxy_missing_symbol COMMAND proxy_smoke_test
         $<TARGET_FILE:pokemon_gambatte_libretro> $<TARGET_FILE:fake_incomplete> failure)
-    set_tests_properties(type_hud sha1 battle_decoder memory_view video_marker proxy_marker proxy_smoke proxy_adjacent proxy_recovery proxy_missing_backend
+    set_tests_properties(nextui_package type_hud sha1 battle_decoder memory_view video_marker proxy_marker proxy_smoke proxy_adjacent proxy_recovery proxy_missing_backend
         proxy_self_backend proxy_bad_api proxy_missing_symbol PROPERTIES TIMEOUT 10)
 endif()

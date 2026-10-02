@@ -18,7 +18,7 @@ class Game(C.Structure):
 class BattleState(C.Structure):
     _fields_ = [("status", C.c_int), ("mode", C.c_uint8), ("species", C.c_uint16),
                 ("type1", C.c_int), ("type2", C.c_int),
-                ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8), ("main_menu", C.c_bool)]
+                ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8), ("main_menu", C.c_bool), ("fight_menu", C.c_bool)]
 
 
 class TypeHud(C.Structure):

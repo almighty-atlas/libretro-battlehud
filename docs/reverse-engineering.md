@@ -117,3 +117,25 @@ and return update the HUD even on NULL video duplicates. This exact signature do
 not enable contest/mobile/other special menu layouts; those remain out of scope.
 CPU tilemap updates and displayed frames can have transitional timing differences,
 so the actual bag/party/move entry/return behavior still requires the Mac test.
+
+
+## FIGHT move selection exception
+
+At the user's request, FIGHT retains badges while bag/party/action screens remain
+hidden. `battle_state.fight_menu` is separate from `main_menu`; either enables
+rendering for an otherwise valid opponent. The user explicitly waived a separate
+manual FIGHT test; this addition is verified by automated fixtures, not a new
+interactive observation.
+
+Source: the pinned battle core's `MoveSelectionScreen` and `MoveInfoBox`.
+`wMoveSelectionMenuType` at `01:D235` must be 0 (player's battle moves), excluding
+1 (enemy moves) and 2 (Ether/Elixir selection). The four bytes beginning at
+`00:CFA1` (`w2DMenuCursorInitY/X`, row/column counts) must be 13, 5, 1–4, 1.
+`w2DMenuCursorOffsets` at `00:CFA7` must be 10 hex. The profile additionally checks
+visible textbox corners at C540/C54A (info box top) and C5F8/C607 (move list bottom):
+79/7B/7D/7E, the pinned charmap's top-left/top-right/bottom-left/bottom-right tiles.
+
+These corners are preserved for a disabled attack, whereas TYPE text is replaced
+by `Disabled!`; TYPE text is therefore not a visibility requirement. Stale cursor
+geometry without the move/info boxes is rejected. Item PP menus, wrong geometry,
+incomplete boxes and missing reads are covered by negative fixtures.

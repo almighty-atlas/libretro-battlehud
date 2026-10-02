@@ -23,6 +23,30 @@ const char *pokemon_type_name(enum pokemon_type type)
         "GHOST","DRAGON","DARK","STEEL","FAIRY"};
     return type>=TYPE_NONE && type<=TYPE_FAIRY ? names[type] : "UNKNOWN";
 }
+static bool labels_match(const struct menu_label *labels, battle_memory_read read, void *context)
+{
+    for (unsigned i = 0; i < 4; ++i) {
+        const struct menu_label *label = &labels[i];
+        uint8_t tiles[5];
+        if (!label->size || label->size > sizeof(tiles) ||
+            !read(context, label->address, tiles, label->size) ||
+            memcmp(tiles, label->tiles, label->size))
+            return false;
+    }
+    return true;
+}
+static bool fight_menu_visible(const struct game_profile *p, battle_memory_read read, void *context)
+{
+    uint8_t type, geometry[4], offsets;
+    if (!read(context, p->move_menu_type, &type, 1) || type != 0 ||
+        !read(context, p->move_geometry, geometry, sizeof(geometry)) ||
+        !read(context, p->move_cursor_offsets, &offsets, 1) ||
+        geometry[0] != p->move_origin_y || geometry[1] != p->move_origin_x ||
+        !geometry[2] || geometry[2] > p->move_max_rows || geometry[3] != 1 ||
+        offsets != p->move_offset)
+        return false;
+    return labels_match(p->move_menu_labels, read, context);
+}
 static bool main_menu_visible(const struct game_profile *p, battle_memory_read read, void *context)
 {
     uint8_t pointer[2], bank;
@@ -31,15 +55,7 @@ static bool main_menu_visible(const struct game_profile *p, battle_memory_read r
         ((unsigned)pointer[0] | (unsigned)pointer[1] << 8) != p->main_menu_pointer)
         return false;
     /* Metadata can outlive a draw/restore. Require all four rendered labels too. */
-    for (unsigned i = 0; i < 4; ++i) {
-        const struct menu_label *label = &p->main_menu_labels[i];
-        uint8_t tiles[5];
-        if (!label->size || label->size > sizeof(tiles) ||
-            !read(context, label->address, tiles, label->size) ||
-            memcmp(tiles, label->tiles, label->size))
-            return false;
-    }
-    return true;
+    return labels_match(p->main_menu_labels, read, context);
 }
 struct battle_state battle_decode(const struct game_profile *p,
                                  battle_memory_read read, void *context)
@@ -75,11 +91,12 @@ struct battle_state battle_decode(const struct game_profile *p,
     s.type1=t1; s.type2=t1==t2 ? TYPE_NONE : t2;
     s.raw_type1=types[0]; s.raw_type2=types[1];
     s.main_menu=main_menu_visible(p,read,context);
+    s.fight_menu=fight_menu_visible(p,read,context);
     return s;
 }
 bool battle_state_equal(const struct battle_state *a, const struct battle_state *b)
 {
     return a->status==b->status && a->mode==b->mode && a->species==b->species &&
         a->type1==b->type1 && a->type2==b->type2 && a->raw_type1==b->raw_type1 &&
-        a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu;
+        a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu && a->fight_menu==b->fight_menu;
 }
