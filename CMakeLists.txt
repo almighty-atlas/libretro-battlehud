@@ -15,6 +15,7 @@ add_library(pokemon_gambatte_libretro SHARED
     src/sha1.c
     src/game_profile.c
     src/battle_decoder.c
+    src/training_stats.c
     src/move_effectiveness.c
     src/type_hud.c
 )
@@ -42,15 +43,20 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 )
 
 if(BUILD_TESTING)
+    add_executable(training_stats_test tests/training_stats_test.c src/training_stats.c src/game_profile.c)
+    target_include_directories(training_stats_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_options(training_stats_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME training_stats COMMAND training_stats_test)
+    set_tests_properties(training_stats PROPERTIES TIMEOUT 10)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(NAME nextui_package COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/nextui_package_test.py)
-    add_executable(type_hud_test tests/type_hud_test.c src/type_hud.c src/battle_decoder.c src/move_effectiveness.c)
+    add_executable(type_hud_test tests/type_hud_test.c src/type_hud.c src/battle_decoder.c src/move_effectiveness.c src/training_stats.c)
     target_include_directories(type_hud_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_compile_options(type_hud_test PRIVATE -Wall -Wextra -Wpedantic)
     add_test(NAME type_hud COMMAND type_hud_test)
-    add_executable(battle_decoder_test tests/battle_decoder_test.c src/battle_decoder.c src/game_profile.c src/move_effectiveness.c)
+    add_executable(battle_decoder_test tests/battle_decoder_test.c src/battle_decoder.c src/game_profile.c src/move_effectiveness.c src/training_stats.c)
     target_include_directories(battle_decoder_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_options(battle_decoder_test PRIVATE -Wall -Wextra -Wpedantic)

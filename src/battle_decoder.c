@@ -63,6 +63,7 @@ struct battle_state battle_decode(const struct game_profile *p,
 {
     struct battle_state s={0};
     if(!p) return s;
+    s.training=training_stats_decode(p,read,context);
     s.status=BATTLE_UNAVAILABLE;
     uint8_t mode, ended, starting, switching;
     if(!read || !read(context,p->battle_mode,&mode,1)) return s;
@@ -118,5 +119,6 @@ bool battle_state_equal(const struct battle_state *a, const struct battle_state 
         a->type1==b->type1 && a->type2==b->type2 && a->raw_type1==b->raw_type1 &&
         a->raw_type2==b->raw_type2 && a->main_menu==b->main_menu && a->fight_menu==b->fight_menu &&
         !memcmp(a->moves,b->moves,sizeof(a->moves)) &&
-        !memcmp(a->effectiveness,b->effectiveness,sizeof(a->effectiveness));
+        !memcmp(a->effectiveness,b->effectiveness,sizeof(a->effectiveness)) &&
+        training_stats_equal(&a->training,&b->training);
 }

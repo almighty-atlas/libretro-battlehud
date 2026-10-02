@@ -185,3 +185,12 @@ symbols in each move row, with status/conditional/unusable distinctions.
 Fourteen host cases pass; decoder/renderer also pass ASan+UBSan. New feature
 visual acceptance and physical H700 acceptance remain pending. See
 [move-effectiveness details](move-effectiveness.md).
+
+## Party DV/stat-experience extension
+
+The user accepted the pixel icons/FIGHT appearance ("sieht sehr gut aus").
+The third player-party stats page now displays DVs and raw Gen 2 stat experience
+in the lower-left pane. Original right-hand stats remain untouched. Training
+fixtures and pixel-boundary/duplicate tests pass, including ASan+UBSan.
+Interactive acceptance of the new table and physical-device acceptance are
+pending; see [training stats](training-stats.md).

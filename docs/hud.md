@@ -46,3 +46,6 @@ Real-Gambatte component tests feed actual emulator pixels and the synthetic
 fixture's decoded model into the renderer, while the production ROM gate remains
 closed for that original test ROM. The prior text-badge Mac tests and save-state restoration passed; the new
 icon/hint appearance still needs interactive acceptance. Physical NextUI/H700 testing remains M5.
+
+The same read-only compositor also draws the party
+[DV/stat-experience table](training-stats.md) on the third stats page.

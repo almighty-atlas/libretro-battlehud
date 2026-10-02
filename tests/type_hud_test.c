@@ -133,6 +133,24 @@ static void check(enum retro_pixel_format f)
     type_hud_clear(&hud);
     assert(!hud.clean && !hud.output && !hud.has_frame);
     assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==NULL);
+    /* Training pane overlays only x=0..79, y=64..143, even outside battle. */
+    memset(&s,0,sizeof(s)); s.training.visible=true; s.training.species=155;
+    for(unsigned i=0;i<6;i++) { s.training.dv[i]=15; s.training.ev[i]=65535; }
+    out=type_hud_draw(&hud,&s,input,w,h,pitch,f); assert(out==hud.output);
+    for(unsigned y=0;y<h;y++) for(unsigned x=0;x<w;x++)
+        if(x>=80 || y<64) assert(get(out,pitch,size,x,y)==get(input,pitch,size,x,y));
+    assert(get(out,pitch,size,0,64)==packed(f,0x18202c));
+    assert(get(out,pitch,size,28,66)==packed(f,0x90c4ff)); /* D header */
+    assert(get(out,pitch,size,29,76)==packed(f,0xffffff)); /* 1 in HP DV 15 */
+    assert(get(out,pitch,size,50,76)==packed(f,0xffffff)); /* first 6 of 65535 */
+    assert(!memcmp(input,original,bytes));
+    assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==NULL);
+    s.training.ev[0]=0; s.training.slot=1;
+    assert(type_hud_draw(&hud,&s,NULL,w,h,pitch,f)==hud.output);
+    out=type_hud_draw(&hud,&hidden,NULL,w,h,pitch,f); assert(out==hud.clean);
+    for(unsigned y=0;y<h;y++) assert(!memcmp((const uint8_t *)out+y*pitch,input+y*pitch,w*size));
+    s.training.visible=true;
+    assert(type_hud_draw(&hud,&s,input,w,h-1,pitch,f)==input);
     type_hud_clear(&hud); free(input); free(original);
 }
 static void preview(const char *path)

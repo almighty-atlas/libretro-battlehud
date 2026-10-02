@@ -1,6 +1,7 @@
 #ifndef BATTLEHUD_BATTLE_DECODER_H
 #define BATTLEHUD_BATTLE_DECODER_H
 #include "game_profile.h"
+#include "training_stats.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -22,6 +23,7 @@ struct battle_state {
     uint8_t raw_type1, raw_type2;
     bool main_menu, fight_menu; /* Presentation eligibility, independent of combatant. */
     uint8_t moves[4], effectiveness[4]; /* FIGHT list order; zero slots stay empty. */
+    struct training_stats training;
 };
 typedef bool (*battle_memory_read)(void *context, size_t address, void *out, size_t size);
 struct battle_state battle_decode(const struct game_profile *profile,

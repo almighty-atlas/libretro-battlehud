@@ -1,5 +1,6 @@
 #include "type_hud.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 /* Original 8x8 type silhouettes, indexed by normalized type (no ROM art). */
@@ -49,6 +50,7 @@ static void pixel(uint8_t *out, size_t pitch, size_t bpp, unsigned x, unsigned y
 static bool valid_type(enum pokemon_type type) { return type>=TYPE_NORMAL && type<=TYPE_FAIRY; }
 static bool fits(const struct battle_state *s, unsigned width, unsigned height)
 {
+    if(s->training.visible) return width==160 && height==144;
     if(s->status!=BATTLE_ACTIVE || (!s->main_menu && !s->fight_menu) || !s->species || !valid_type(s->type1) ||
        (s->type2!=TYPE_NONE && !valid_type(s->type2))) return false;
     unsigned rows=s->type2!=TYPE_NONE && s->type2!=s->type1 ? 2 : 1;
@@ -89,6 +91,53 @@ static void move_hints(struct type_hud *h, size_t bpp, const struct battle_state
                   ink ? 0xffffff : backgrounds[k]);
         }
     }
+}
+/* Original 5x7 ASCII glyphs, reused for read-only training values. */
+static const uint8_t stats_font[36][7]={
+{14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
+{30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
+{14,17,16,23,17,17,15},{17,17,17,31,17,17,17},{14,4,4,4,4,4,14},
+{7,2,2,2,18,18,12},{17,18,20,24,20,18,17},{16,16,16,16,16,16,31},
+{17,27,21,21,17,17,17},{17,25,21,19,17,17,17},{14,17,17,17,17,17,14},
+{30,17,17,30,16,16,16},{14,17,17,17,21,18,13},{30,17,17,30,20,18,17},
+{15,16,16,14,1,1,30},{31,4,4,4,4,4,4},{17,17,17,17,17,17,14},
+{17,17,17,17,17,10,4},{17,17,17,21,21,21,10},{17,17,10,4,10,17,17},
+{17,17,10,4,4,4,4},{31,1,2,4,8,16,31},
+{14,17,19,21,25,17,14},{4,12,4,4,4,4,14},{14,17,1,2,4,8,31},
+{30,1,1,14,1,1,30},{2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
+{14,16,16,30,17,17,14},{31,1,2,4,8,8,8},{14,17,17,14,17,17,14},
+{14,17,17,15,1,1,14}
+};
+static void stats_text(struct type_hud *h,size_t bpp,unsigned left,unsigned top,
+                       const char *text,uint32_t rgb)
+{
+    for(unsigned i=0;text[i];i++) {
+        int index=text[i]>='A' && text[i]<='Z' ? text[i]-'A' :
+            text[i]>='0' && text[i]<='9' ? text[i]-'0'+26 : -1;
+        if(index<0) continue;
+        for(unsigned y=0;y<7;y++) for(unsigned x=0;x<5;x++)
+            if(stats_font[index][y] & (1u<<(4-x)))
+                pixel(h->output,h->pitch,bpp,left+i*6+x,top+y,h->format,rgb);
+    }
+}
+static void training_table(struct type_hud *h,size_t bpp,const struct training_stats *s)
+{
+    /* Replace only the lower-left OT/ID pane; original stats and upper half stay intact. */
+    for(unsigned y=64;y<144;y++) for(unsigned x=0;x<80;x++)
+        pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
+    stats_text(h,bpp,27,66,"DV",0x90c4ff);
+    stats_text(h,bpp,49,66,"EV",0x90c4ff);
+    const char *labels[6]={"HP","ATK","DEF","SPA","SPD","SPE"};
+    for(unsigned i=0;i<6;i++) {
+        unsigned top=76+i*10;
+        stats_text(h,bpp,2,top,labels[i],0xc0d0e0);
+        char value[6];
+        snprintf(value,sizeof(value),"%u",(unsigned)s->dv[i]);
+        stats_text(h,bpp,39-(unsigned)strlen(value)*6,top,value,0xffffff);
+        snprintf(value,sizeof(value),"%u",(unsigned)s->ev[i]);
+        stats_text(h,bpp,79-(unsigned)strlen(value)*6,top,value,0xffffff);
+    }
+    stats_text(h,bpp,2,137,"STAT EXP",0x90c4ff);
 }
 static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
 {
@@ -132,9 +181,12 @@ const void *type_hud_draw(struct type_hud *h, const struct battle_state *state,
     if(active && reserve(&h->output,&h->output_capacity,bytes)) {
         for(unsigned y=0;y<height;y++)
             memcpy(h->output+(size_t)y*pitch,h->clean+(size_t)y*pitch,row_bytes);
-        badge(h,bpp,state->type1,2);
-        if(state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
-        move_hints(h,bpp,state);
+        if(state->training.visible) training_table(h,bpp,&state->training);
+        else {
+            badge(h,bpp,state->type1,2);
+            if(state->type2!=TYPE_NONE && state->type2!=state->type1) badge(h,bpp,state->type2,16);
+            move_hints(h,bpp,state);
+        }
         result=h->output;
     } else if(active) {
         /* Allocation failure passes a clean frame; retry if a duplicate arrives. */

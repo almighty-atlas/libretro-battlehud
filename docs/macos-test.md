@@ -110,7 +110,7 @@ and save-state restoration are later interactive checks. Type badges arrive in M
 
 ## M4 visual HUD test
 
-Use `battlehud-macos-arm64-icons-moves`, quit RetroArch and replace the previous wrapper.
+Use `battlehud-macos-arm64-training`, quit RetroArch and replace the previous wrapper.
 The supported Crystal profile now enables badges by default; no marker setting
 is required. For quieter terminal output while testing:
 

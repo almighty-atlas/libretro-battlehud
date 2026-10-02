@@ -35,7 +35,9 @@ Only SHA-1 `f2f52230b536214ef7c9924f483392993e226cfb` selects the Crystal profil
 Enable `LIBRETRO_BATTLEHUD_DEBUG=1` to see profile selection and battle changes.
 See [profiles](docs/profiles.md) and [address provenance](docs/reverse-engineering.md).
 M3 interactive Mac acceptance and M4 text-badge readability/main-menu visibility passed.
-The new pixel icons and move hints await Mac visual acceptance.
+Pixel icons and move hints passed user-reported Mac visual acceptance.
+The third party stats tab now includes a DV/stat-experience table;
+see [training stats](docs/training-stats.md). Its Mac acceptance is pending.
 See [move-effectiveness rules and symbols](docs/move-effectiveness.md).
 Set `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` to disable badges for comparison.
 M0–M3 have passed desktop checks, including user-reported interactive Mac tests; see [validation status](docs/validation.md).

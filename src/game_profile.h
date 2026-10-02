@@ -3,7 +3,7 @@
 #include <stdint.h>
 struct menu_label {
     uint16_t address;
-    uint8_t size, tiles[5];
+    uint8_t size, tiles[8];
 };
 struct game_profile {
     const char *id, *sha1;
@@ -16,6 +16,9 @@ struct game_profile {
     uint8_t move_origin_y, move_origin_x, move_max_rows, move_offset;
     struct menu_label move_menu_labels[4];
     uint16_t player_moves, player_dvs, player_pp, player_disable, enemy_substatus1;
+    uint16_t stats_flags, stats_state, mon_source, party_index, party_count, party_species;
+    uint16_t party_base, temp_mon, stats_page_marker;
+    struct menu_label stats_labels[5];
 };
 const struct game_profile *game_profile_find(const char *sha1);
 #endif

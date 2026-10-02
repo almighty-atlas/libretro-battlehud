@@ -146,6 +146,16 @@ static void update_battle(void)
             fprintf(stderr, "battlehud: hidden (%s)\n", reason);
         }
     }
+    if(debug_enabled && !training_stats_equal(&battle.training,&next.training)) {
+        if(next.training.visible) {
+            fprintf(stderr,"battlehud: stats party=%u species=%u order=HP/ATK/DEF/SPA/SPD/SPE DV=",
+                    (unsigned)next.training.slot+1,(unsigned)next.training.species);
+            for(unsigned i=0;i<6;i++) fprintf(stderr,"%s%u",i?"/":"",(unsigned)next.training.dv[i]);
+            fprintf(stderr," EV=");
+            for(unsigned i=0;i<6;i++) fprintf(stderr,"%s%u",i?"/":"",(unsigned)next.training.ev[i]);
+            fprintf(stderr,"\n");
+        } else fprintf(stderr,"battlehud: stats hidden\n");
+    }
     battle = next;
 }
 
