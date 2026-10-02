@@ -5,6 +5,7 @@
 #include "memory_view.h"
 #include "battle_decoder.h"
 #include "sha1.h"
+#include "type_hud.h"
 
 #include <dlfcn.h>
 #include <limits.h>
@@ -79,6 +80,8 @@ static retro_audio_sample_batch_t frontend_audio_sample_batch;
 static retro_input_poll_t frontend_input_poll;
 static retro_input_state_t frontend_input_state;
 static struct video_marker marker;
+static struct type_hud hud;
+static bool hud_enabled;
 static struct memory_view memory;
 static bool game_loaded;
 static bool marker_enabled;
@@ -175,6 +178,12 @@ static void proxy_video_refresh(const void *data, unsigned width,
                                 unsigned height, size_t pitch)
 {
     if (frontend_video_refresh) {
+        if (game_loaded && profile) {
+            /* Sample the RAM belonging to this callback before compositing. */
+            update_battle();
+            if (hud_enabled)
+                data = type_hud_draw(&hud, &battle, data, width, height, pitch, pixel_format);
+        }
         if (marker_enabled)
             data = video_marker_draw(&marker, data, width, height, pitch, pixel_format);
         frontend_video_refresh(data, width, height, pitch);
@@ -360,6 +369,8 @@ void retro_init(void)
 {
     const char *enabled = getenv("LIBRETRO_BATTLEHUD_TEST_MARKER");
     marker_enabled = enabled && strcmp(enabled, "1") == 0;
+    enabled = getenv("LIBRETRO_BATTLEHUD_DISABLE_HUD");
+    hud_enabled = !(enabled && strcmp(enabled, "1") == 0);
     enabled = getenv("LIBRETRO_BATTLEHUD_DEBUG");
     debug_enabled = enabled && strcmp(enabled, "1") == 0;
     if (load_backend())
@@ -372,6 +383,7 @@ void retro_deinit(void)
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();
+    type_hud_clear(&hud);
     memory_view_clear(&memory);
     /* Teardown must not load a core that never became available. */
     if (backend.handle) {
@@ -382,6 +394,7 @@ void retro_deinit(void)
     video_marker_clear(&marker);
     marker_enabled = false;
     debug_enabled = false;
+    hud_enabled = false;
     pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 }
 
@@ -482,6 +495,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 
 void retro_reset(void)
 {
+    type_hud_clear(&hud);
     clear_battle();
     if (load_backend())
         backend.reset();
@@ -510,6 +524,7 @@ bool retro_unserialize(const void *data, size_t size)
 {
     bool restored = load_backend() && backend.unserialize(data, size);
     if (restored && game_loaded && profile) {
+        type_hud_clear(&hud);
         clear_battle();
         update_battle();
     }
@@ -534,6 +549,7 @@ bool retro_load_game(const struct retro_game_info *game)
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();
+    type_hud_clear(&hud);
     memory_view_clear(&memory);
     game_loaded = load_backend() && backend.load_game(game);
     if (!game_loaded)
@@ -551,6 +567,7 @@ bool retro_load_game_special(unsigned game_type,
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();
+    type_hud_clear(&hud);
     memory_view_clear(&memory);
     game_loaded = load_backend() &&
         backend.load_game_special(game_type, info, num_info);
@@ -565,6 +582,7 @@ void retro_unload_game(void)
     profile = NULL;
     gambatte_memory_layout = false;
     clear_battle();
+    type_hud_clear(&hud);
     memory_view_clear(&memory);
     if (load_backend())
         backend.unload_game();

@@ -73,9 +73,9 @@ A host then runs the pure decoder over actual wrapper memory reads and compares
 the result with the independently specified fixture. Production ROM detection
 must reject that original ROM. No profile override is compiled into the product.
 
-These are synthetic and emulator integration checks. They **do not yet establish
-interactive Crystal battle correctness**, including timing during animations or
-actual trainer switches. The user's previously tested Crystal filename is not a
-hash verification. Mac test logs must confirm the profile hash, backend version,
-observed species and types, transitions and state restoration. Link/mobile and
-special scripted battles are not acceptance-tested in this initial stage.
+M3 interactive desktop acceptance was subsequently reported by the user on
+2026-10-02: supported SHA-1, wild single/dual types, trainer, trainer opponent
+change, battle end and save-state restoration. See [captured evidence and its
+limits](validation.md). The startup backend/frontend version strings were not
+captured. M4 visual HUD acceptance and physical H700 behavior remain pending.
+Link/mobile and special scripted battles are not acceptance-tested.

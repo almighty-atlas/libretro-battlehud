@@ -21,6 +21,14 @@ class BattleState(C.Structure):
                 ("raw_type1", C.c_uint8), ("raw_type2", C.c_uint8)]
 
 
+class TypeHud(C.Structure):
+    _fields_ = [("clean", C.c_void_p), ("output", C.c_void_p),
+                ("clean_capacity", C.c_size_t), ("output_capacity", C.c_size_t),
+                ("width", C.c_uint), ("height", C.c_uint), ("pitch", C.c_size_t),
+                ("format", C.c_int), ("has_frame", C.c_bool), ("has_presented", C.c_bool),
+                ("presented", BattleState)]
+
+
 class Info(C.Structure):
     _fields_ = [("name", C.c_char_p), ("version", C.c_char_p),
                 ("extensions", C.c_char_p), ("fullpath", C.c_bool),
@@ -41,6 +49,7 @@ def worker(core_path, directory):
     video_hash, audio_hash = hashlib.sha256(), hashlib.sha256()
     stats = {"frames": 0, "samples": 0, "polls": 0}
     errors = []
+    captured_frame = None
     marker_test = os.environ.get("LIBRETRO_BATTLEHUD_TEST_MARKER") == "1"
     require_marker = os.environ.get("BATTLEHUD_EXPECT_MARKER") == "1"
     pixel_format = 0  # Libretro defaults to 0RGB1555.
@@ -67,6 +76,7 @@ def worker(core_path, directory):
 
     @VIDEO
     def video(data, width, height, pitch):
+        nonlocal captured_frame
         stats["frames"] += 1
         stats["geometry"] = [width, height, pitch, pixel_format]
         if not data:
@@ -75,6 +85,9 @@ def worker(core_path, directory):
         if pitch < width * bpp:
             errors.append("invalid frame pitch")
             return
+        # Own the last software frame for a standalone renderer integration check.
+        captured_frame = (C.create_string_buffer(C.string_at(data, pitch * (height - 1) + width * bpp)),
+                          width, height, pitch, pixel_format)
         # Padding is unspecified; compare visible pixels only.
         for row in range(height):
             pixels = C.string_at(data + row * pitch, width * bpp)
@@ -194,6 +207,40 @@ def worker(core_path, directory):
         actual = [snapshot.status, snapshot.mode, snapshot.species, snapshot.type1,
                   snapshot.type2, snapshot.raw_type1, snapshot.raw_type2]
         assert actual == expected_battle, actual
+        # Component integration over actual emulator pixels and the decoded model.
+        # Production profile gating intentionally still rejects this synthetic ROM.
+        frame_buffer, width, height, pitch, fmt = captured_frame
+        original = frame_buffer.raw
+        draw, clear = core.type_hud_draw, core.type_hud_clear
+        draw.argtypes = [C.POINTER(TypeHud), C.POINTER(BattleState), C.c_void_p,
+                         C.c_uint, C.c_uint, C.c_size_t, C.c_int]
+        draw.restype = C.c_void_p
+        clear.argtypes, clear.restype = [C.POINTER(TypeHud)], None
+        hud = TypeHud()
+        rendered = draw(C.byref(hud), C.byref(snapshot), frame_buffer, width, height, pitch, fmt)
+        assert rendered and rendered != C.addressof(frame_buffer)
+        bpp = 4 if fmt == 1 else 2
+        white = {0: 0x7fff, 1: 0xffffff, 2: 0xffff}[fmt]
+        assert int.from_bytes(C.string_at(rendered + 5 * pitch + 119 * bpp, bpp), sys.byteorder) == white
+        for y in range(height):
+            for x in range(width):
+                badge = 115 <= x < 158 and (2 <= y < 15 or 17 <= y < 30)
+                if not badge:
+                    offset = y * pitch + x * bpp
+                    assert C.string_at(rendered + offset, bpp) == original[offset:offset + bpp]
+        assert frame_buffer.raw == original
+        assert not draw(C.byref(hud), C.byref(snapshot), None, width, height, pitch, fmt)
+        # Model change on a NULL duplicate must redraw; outside battle must erase.
+        snapshot.type2 = 0
+        assert draw(C.byref(hud), C.byref(snapshot), None, width, height, pitch, fmt)
+        snapshot.status = 1
+        clean = draw(C.byref(hud), C.byref(snapshot), None, width, height, pitch, fmt)
+        assert clean
+        for y in range(height):
+            assert C.string_at(clean + y * pitch, width * bpp) == original[y * pitch:y * pitch + width * bpp]
+        clear(C.byref(hud))
+        assert not hud.clean and not hud.output and not hud.has_frame
+        print("Type HUD real-Gambatte frame/decoder fixture passed")
         getter = core.battlehud_get_battle_state
         getter.argtypes, getter.restype = [C.POINTER(BattleState)], C.c_bool
         assert not getter(C.byref(snapshot)), "original ROM must stay unsupported"

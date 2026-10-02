@@ -22,12 +22,12 @@ into a generation-independent enum. Duplicate type bytes become one type;
 Bird, Curse, gaps and out-of-range values are rejected. Types come from live
 battle RAM, so type-changing battle effects are represented by the current values.
 
-This stage has terminal diagnostics, not type badges. Enable them with
+M4 adds type badges for a valid active model. Terminal diagnostics remain available with
 `LIBRETRO_BATTLEHUD_DEBUG=1`. The wrapper prints profile/hash/backend once and
 battle-state changes rather than every frame. Outside battle, during start/switch
 transitions, after enemy fainting and on invalid/unavailable data, the enemy model
 is empty. Successful save-state restoration recomputes it; reset invalidates it
 until the next frame; game load/unload/deinit clears it.
 
-Interactive Crystal acceptance is still pending. Source-backed addresses and
-synthetic fixtures do not replace actual wild/trainer/switch/end tests.
+M3 interactive Crystal decoder acceptance passed on the user's Mac; see
+[validation evidence](validation.md). M4 visual HUD acceptance is pending.

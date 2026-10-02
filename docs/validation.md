@@ -77,7 +77,7 @@ parity are checked alongside it. No commercial ROM or Pokémon RAM decoding is
 needed for this test. Crystal profile recognition and battle decoding remain M3.
 
 
-## M3 Crystal decoder — interactive acceptance pending
+## M3 Crystal decoder — interactive desktop acceptance passed (user reported)
 
 ROM recognition uses SHA-1, with one compiled Crystal USA/Europe Rev. 1 profile.
 A pure decoder consumes an abstract read-only memory callback. Unknown ROMs and
@@ -89,9 +89,47 @@ file input) and battle fixtures for single/dual types, wild/trainer battles,
 opponent changes, battle end, restore-shaped snapshots and malformed data.
 The original GBC ROM integration test checks physical bank-1 reads and decodes a
 literal Pidgey fixture through real Gambatte while confirming production profile
-selection rejects the synthetic ROM. The suite now contains 12 CTest cases.
+selection rejects the synthetic ROM. M3 brought the suite to 12 CTest cases.
 
-These checks do not mean the six interactive M3 battle cases are passed. Needed
-on the user's Mac: recognized hash, single/dual types, wild/trainer battle,
-opponent switch, battle end, and restoration with no stale enemy model.
+On 2026-10-02 the user tested commit
+`fe2f046119426f234fea83c9b1977dac96801949` on the same Apple M4 MacBook.
+Manual `shasum` output confirmed the supported ROM SHA-1
+`f2f52230b536214ef7c9924f483392993e226cfb`.
+
+| Interactive case | Evidence |
+|---|---|
+| Wild / dual type | User identified Taubsi; log: `wild species=16 types=NORMAL/FLYING raw=00/02` |
+| Single type | User identified Wiesor; log: `wild species=161 types=NORMAL raw=00/00` |
+| Trainer | User identified Endivie; log: `trainer species=152 types=GRASS raw=16/16` |
+| Enemy switch | Same trainer sequence changed from ID 16 / NORMAL-FLYING to ID 19 / NORMAL, separated by a transition |
+| Battle end | Repeated `hidden (outside battle)` after the tested battles |
+| Save-state restoration | User reported correct restoration after the guided save/end/restore test; exact restoration log not captured |
+
+The switched trainer's Pokémon names (Taubsi/Rattfratz) are inferred from the IDs;
+the user described the last sequence as probably a two-Pokémon trainer battle.
+This is desktop acceptance from user-provided logs and observations. The frontend
+and backend version strings and startup profile line were not captured. Physical
+NextUI/H700 and link/mobile/special battles remain unverified.
 [Reverse-engineering notes](reverse-engineering.md) preserve sources and limits.
+
+
+## M4 type badges — interactive acceptance pending
+
+The renderer draws one or two English type badges at the upper right for a valid
+active Crystal battle. It supports 0RGB1555, RGB565 and XRGB8888, samples the model
+at the video callback and preserves the core's source buffer. Unknown games and
+`LIBRETRO_BATTLEHUD_DISABLE_HUD=1` keep normal video forwarding.
+
+The 13th CTest case covers actual border/background/glyph pixels, unchanged pixels
+outside both badges, immutable source data, all type labels/formats, allocation
+reuse, hidden/invalid states, duplicate-frame model changes and badge removal,
+layout changes, hardware/unknown-format fallbacks and teardown. Exact source
+allocations omit the final row's padding; AddressSanitizer/UndefinedBehaviorSanitizer
+checks also cover the renderer. A software preview was inspected for readability.
+
+Real-Gambatte integration decodes the original test-ROM fixture and runs the
+renderer over captured emulator pixels. It checks a glyph, pixels outside the
+badges, source preservation, model updates/removal on duplicates and buffer cleanup.
+This is component integration; the synthetic ROM remains rejected by production
+profile selection. The actual automatic Crystal HUD still needs the user's Mac
+test for visibility, enemy changes, disappearance and save-state restoration.

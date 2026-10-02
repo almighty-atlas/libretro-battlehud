@@ -28,13 +28,14 @@ Development starts on a feature branch and will keep the wrapper transparent bef
 ## Current status and development
 
 PR #1 implements the M0 transparent proxy, M1 opt-in video test marker and
-M2 read-only memory adapter, plus an M3 Crystal USA/Europe Rev. 1 battle decoder.
-M3 exposes terminal diagnostics; the type HUD is still M4.
+M2 read-only memory adapter, M3 Crystal USA/Europe Rev. 1 battle decoder and
+M4 colored type badges. Valid active battles show one or two badges at the upper right.
 Only SHA-1 `f2f52230b536214ef7c9924f483392993e226cfb` selects the Crystal profile.
 Enable `LIBRETRO_BATTLEHUD_DEBUG=1` to see profile selection and battle changes.
 See [profiles](docs/profiles.md) and [address provenance](docs/reverse-engineering.md).
-Interactive M3 Crystal acceptance is pending.
-M0 and M1 have passed user-reported interactive Mac tests; see [validation status](docs/validation.md).
+M3 interactive Mac acceptance passed; M4 visual HUD acceptance is pending.
+Set `LIBRETRO_BATTLEHUD_DISABLE_HUD=1` to disable badges for comparison.
+M0–M3 have passed desktop checks, including user-reported interactive Mac tests; see [validation status](docs/validation.md).
 
 Set `LIBRETRO_BATTLEHUD_TEST_MARKER=1` when launching the frontend for an 8×8 white
 rectangle at the top right. Without it, video remains transparent.

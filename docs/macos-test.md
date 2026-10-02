@@ -107,3 +107,25 @@ Log entries appear on changes, not every frame. After battle, expect
 `hidden (outside battle)`. Start/switch/faint transitions can temporarily hide the
 model. Capture the profile line and observed enemy line first; trainer switching
 and save-state restoration are later interactive checks. Type badges arrive in M4.
+
+## M4 visual HUD test
+
+Use `battlehud-macos-arm64-m4`, quit RetroArch and replace the previous wrapper.
+The supported Crystal profile now enables badges by default; no marker setting
+is required. For quieter terminal output while testing:
+
+```sh
+LIBRETRO_BATTLEHUD_DEBUG=1 \
+LIBRETRO_BATTLEHUD_BACKEND="$HOME/Library/Application Support/RetroArch/cores/gambatte_libretro.dylib" \
+/Applications/RetroArch.app/Contents/MacOS/RetroArch \
+  -L "$HOME/Downloads/ABDM/Compressed/pokemon_gambatte_libretro.dylib" \
+  "$HOME/Downloads/battlehud-test/Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc" \
+  2>&1 | awk '/battlehud:/ { print; fflush() }'
+```
+
+First check a wild encounter: Taubsi should show NORMAL and FLYING, Wiesor NORMAL.
+Then check that badges disappear after the battle. Subsequent acceptance checks
+are trainer opponent changes and save-state restore. Capture a screenshot if the
+badge placement obscures important game information. Use
+`LIBRETRO_BATTLEHUD_DISABLE_HUD=1` in the launch environment for a plain-frame
+comparison; diagnostics can stay enabled.
