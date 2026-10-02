@@ -15,7 +15,8 @@ package = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(package)
 
 with tempfile.TemporaryDirectory(prefix='battlehud pak ') as temporary:
-    t = Path(temporary)
+    # macOS temporary directories can be symlink aliases; launch uses cd -P.
+    t = Path(temporary).resolve()
     data = bytearray(20)
     data[:6] = b'\x7fELF\x02\x01'
     struct.pack_into('<HH', data, 16, 3, 183)
