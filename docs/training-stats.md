@@ -11,7 +11,8 @@ Defense, Speed and Special (bits 3, 2, 1, 0 respectively). Both Special stats
 share one DV. EV here means Gen 2's raw stat experience, 0..65535, not modern
 0..252 EVs or a calculated stat bonus. Five big-endian counters are stored in
 the Pokémon structure; both Special rows show the same Special counter.
-The footer explicitly labels these values STAT EXP.
+The EXP header explicitly labels these values as stat experience; the footer
+now shows [Hidden Power](hidden-power.md) type and base power.
 
 ## Read-only page and identity checks
 
@@ -133,3 +134,5 @@ Silicon and compares direct/proxy emulation using original test programs.
 Emerald-shaped mapped RAM and renderer fixtures do not replace manual testing
 with Emerald. Red/Blue and Emerald interactive macOS acceptance remains pending.
 The existing NextUI PBH package still launches Gambatte; it cannot launch Emerald.
+
+The Gen 2/3 training panes now also show [Hidden Power type/base power](hidden-power.md).

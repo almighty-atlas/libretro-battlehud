@@ -1,4 +1,5 @@
 #include "move_effectiveness.h"
+#include "hidden_power.h"
 enum { RULE_UNKNOWN, RULE_STATUS, RULE_CHART, RULE_FIXED, RULE_CONDITIONAL,
        RULE_TYPELESS, RULE_HIDDEN };
 #include "gen2_move_data.h"
@@ -31,10 +32,8 @@ enum move_effectiveness gen2_move_effectiveness(uint8_t move, uint8_t dvs,
     if(m->rule==RULE_TYPELESS) return MOVE_NEUTRAL;
     enum pokemon_type type=m->type;
     if(m->rule==RULE_HIDDEN) {
-        uint8_t raw=(uint8_t)((((dvs>>4)&3)<<2)+(dvs&3)+1);
-        if(raw>=6) raw++;
-        if(raw>=10) raw+=10;
-        if(!gen2_type_decode(raw,&type)) return MOVE_UNKNOWN;
+        type=hidden_power_gen2_type(dvs>>4,dvs&15);
+        if(type==TYPE_NONE) return MOVE_UNKNOWN;
     }
     int factor=gen2_type_factor(type,first,second,identified);
     if(factor<0) return MOVE_UNKNOWN;

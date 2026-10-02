@@ -4,6 +4,7 @@
 #include "video_marker.h"
 #include "memory_view.h"
 #include "battle_decoder.h"
+#include "hidden_power.h"
 #include "sha1.h"
 #include "type_hud.h"
 
@@ -155,6 +156,10 @@ static void update_battle(void)
             fprintf(stderr," EV=");
             for(unsigned i=0;i<6;i++) fprintf(stderr,"%s%u",i?"/":"",(unsigned)next.training.ev[i]);
             fprintf(stderr,"\n");
+            struct hidden_power hp;
+            if(hidden_power_calculate(next.training.generation,next.training.dv,&hp))
+                fprintf(stderr,"battlehud: Hidden Power type=%s power=%u\n",
+                        pokemon_type_name(hp.type),(unsigned)hp.power);
         } else fprintf(stderr,"battlehud: stats hidden\n");
     }
     battle = next;

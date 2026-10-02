@@ -1,4 +1,5 @@
 #include "type_hud.h"
+#include "hidden_power.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -57,9 +58,8 @@ static bool fits(const struct battle_state *s, unsigned width, unsigned height)
     unsigned rows=s->type2!=TYPE_NONE && s->type2!=s->type1 ? 2 : 1;
     return width>=16 && height>=2+rows*12+(rows-1)*2+2;
 }
-static void badge(struct type_hud *h, size_t bpp, enum pokemon_type type, unsigned top)
+static void type_tile(struct type_hud *h,size_t bpp,enum pokemon_type type,unsigned left,unsigned top)
 {
-    unsigned left=h->width-14;
     for(unsigned y=0;y<12;y++) for(unsigned x=0;x<12;x++) {
         uint32_t rgb=(y==0 || y==11 || x==0 || x==11)?0x101010:color(type);
         pixel(h->output,h->pitch,bpp,left+x,top+y,h->format,rgb);
@@ -67,6 +67,10 @@ static void badge(struct type_hud *h, size_t bpp, enum pokemon_type type, unsign
     for(unsigned y=0;y<8;y++) for(unsigned x=0;x<8;x++)
         if(icons[type-1][y] & (1u<<(7-x)))
             pixel(h->output,h->pitch,bpp,left+2+x,top+2+y,h->format,0xffffff);
+}
+static void badge(struct type_hud *h,size_t bpp,enum pokemon_type type,unsigned top)
+{
+    type_tile(h,bpp,type,h->width-14,top);
 }
 static void move_hints(struct type_hud *h, size_t bpp, const struct battle_state *s)
 {
@@ -121,6 +125,16 @@ static void stats_text(struct type_hud *h,size_t bpp,unsigned left,unsigned top,
                 pixel(h->output,h->pitch,bpp,left+i*6+x,top+y,h->format,rgb);
     }
 }
+static void hidden_power_row(struct type_hud *h,size_t bpp,const struct training_stats *s,
+                             unsigned left,unsigned top)
+{
+    struct hidden_power hp;
+    if(!hidden_power_calculate(s->generation,s->dv,&hp)) return;
+    stats_text(h,bpp,left+2,top+4,"HPWR",0x90c4ff);
+    type_tile(h,bpp,hp.type,left+28,top);
+    char text[8];snprintf(text,sizeof(text),"P %u",(unsigned)hp.power);
+    stats_text(h,bpp,left+52,top+4,text,0xffffff);
+}
 static void training_cell(struct type_hud *h,size_t bpp,const struct training_stats *s,
                           unsigned stat,unsigned left,unsigned top,const char *label)
 {
@@ -142,23 +156,25 @@ static void training_table(struct type_hud *h,size_t bpp,const struct training_s
             unsigned left=80+col*80;
             stats_text(h,bpp,left+27,113,"IV",0x90c4ff);stats_text(h,bpp,left+49,113,"EV",0x90c4ff);
             for(unsigned row=0;row<3;row++) {
-                unsigned i=col*3+row;training_cell(h,bpp,s,i,left,122+row*10,labels[i]);
+                unsigned i=col*3+row;training_cell(h,bpp,s,i,left,121+row*10,labels[i]);
             }
         }
         unsigned total=0;for(unsigned i=0;i<6;i++) total+=s->ev[i];char text[24];
         snprintf(text,sizeof(text),"EV %u OF 510",total);stats_text(h,bpp,82,152,text,0x90c4ff);
+        hidden_power_row(h,bpp,s,160,148);
         return;
     }
     unsigned left=s->generation==1 ? 80 : 0,top=s->generation==1 ? 72 : 64;
     for(unsigned y=top;y<144;y++) for(unsigned x=left;x<left+80;x++)
         pixel(h->output,h->pitch,bpp,x,y,h->format,0x18202c);
-    stats_text(h,bpp,left+27,top+2,"DV",0x90c4ff);stats_text(h,bpp,left+49,top+2,"EV",0x90c4ff);
+    stats_text(h,bpp,left+27,top+2,"DV",0x90c4ff);stats_text(h,bpp,left+49,top+2,s->generation==2 ? "EXP" : "EV",0x90c4ff);
     const unsigned kanto_order[]={0,1,2,5,3};
     for(unsigned row=0;row<(s->generation==1 ? 5u : 6u);row++) {
         unsigned i=s->generation==1 ? kanto_order[row] : row;
-        training_cell(h,bpp,s,i,left,top+12+row*10,s->generation==1 && i==3 ? "SPC" : labels[i]);
+        training_cell(h,bpp,s,i,left,top+(s->generation==2 ? 11u : 12u)+row*10,s->generation==1 && i==3 ? "SPC" : labels[i]);
     }
-    stats_text(h,bpp,left+2,137,"STAT EXP",0x90c4ff);
+    if(s->generation==2) hidden_power_row(h,bpp,s,left,132);
+    else stats_text(h,bpp,left+2,137,"STAT EXP",0x90c4ff);
 }
 static bool reserve(uint8_t **buffer, size_t *capacity, size_t bytes)
 {

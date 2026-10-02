@@ -16,6 +16,7 @@ add_library(pokemon_gambatte_libretro SHARED
     src/game_profile.c
     src/battle_decoder.c
     src/training_stats.c
+    src/hidden_power.c
     src/move_effectiveness.c
     src/type_hud.c
 )
@@ -43,7 +44,12 @@ set_target_properties(pokemon_gambatte_libretro PROPERTIES
 )
 
 if(BUILD_TESTING)
-    add_executable(multigen_training_test tests/multigen_training_test.c src/training_stats.c src/game_profile.c src/battle_decoder.c src/move_effectiveness.c)
+    add_executable(hidden_power_test tests/hidden_power_test.c src/hidden_power.c)
+    target_include_directories(hidden_power_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_options(hidden_power_test PRIVATE -Wall -Wextra -Wpedantic)
+    add_test(NAME hidden_power COMMAND hidden_power_test)
+    set_tests_properties(hidden_power PROPERTIES TIMEOUT 10)
+    add_executable(multigen_training_test tests/multigen_training_test.c src/training_stats.c src/game_profile.c src/battle_decoder.c src/move_effectiveness.c src/hidden_power.c)
     target_include_directories(multigen_training_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_options(multigen_training_test PRIVATE -Wall -Wextra -Wpedantic)
     add_test(NAME multigen_training COMMAND multigen_training_test)
@@ -56,12 +62,12 @@ if(BUILD_TESTING)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(NAME nextui_package COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/nextui_package_test.py)
-    add_executable(type_hud_test tests/type_hud_test.c src/type_hud.c src/battle_decoder.c src/move_effectiveness.c src/training_stats.c)
+    add_executable(type_hud_test tests/type_hud_test.c src/type_hud.c src/battle_decoder.c src/move_effectiveness.c src/training_stats.c src/hidden_power.c)
     target_include_directories(type_hud_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_compile_options(type_hud_test PRIVATE -Wall -Wextra -Wpedantic)
     add_test(NAME type_hud COMMAND type_hud_test)
-    add_executable(battle_decoder_test tests/battle_decoder_test.c src/battle_decoder.c src/game_profile.c src/move_effectiveness.c src/training_stats.c)
+    add_executable(battle_decoder_test tests/battle_decoder_test.c src/battle_decoder.c src/game_profile.c src/move_effectiveness.c src/training_stats.c src/hidden_power.c)
     target_include_directories(battle_decoder_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_compile_options(battle_decoder_test PRIVATE -Wall -Wextra -Wpedantic)

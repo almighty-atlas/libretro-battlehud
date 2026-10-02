@@ -12,6 +12,9 @@ import sys
 import tempfile
 from gambatte_integration import Game, Info, ENV, VIDEO, SAMPLE, BATCH, POLL, INPUT, READ, TrainingStats, BattleState, TypeHud
 
+class HiddenPower(C.Structure):
+    _fields_ = [("type", C.c_int), ("power", C.c_uint8)]
+
 class Descriptor(C.Structure):
     _fields_ = [("flags", C.c_uint64), ("ptr", C.c_void_p), ("offset", C.c_size_t),
                 ("start", C.c_size_t), ("select", C.c_size_t), ("disconnect", C.c_size_t),
@@ -156,6 +159,10 @@ def worker(path, directory):
         assert snapshot.training.visible and snapshot.training.species == 277
         assert list(snapshot.training.dv) == [31, 1, 17, 29, 3, 2]
         assert list(snapshot.training.ev) == [0, 1, 252, 128, 125, 4]
+        calculate = core.hidden_power_calculate
+        calculate.argtypes, calculate.restype = [C.c_uint, C.POINTER(C.c_uint8), C.POINTER(HiddenPower)], C.c_bool
+        hp = HiddenPower()
+        assert calculate(3, snapshot.training.dv, C.byref(hp)) and (hp.type, hp.power) == (6, 56)  # Ice 56
         pixels, w, h, f = frames[-1]
         bpp = 4 if f == 1 else 2
         source = C.create_string_buffer(pixels)
