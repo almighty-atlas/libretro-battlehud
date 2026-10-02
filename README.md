@@ -38,7 +38,9 @@ M3 interactive Mac acceptance and M4 text-badge readability/main-menu visibility
 Pixel icons and move hints passed user-reported Mac visual acceptance.
 The third party stats tab now includes a DV/stat-experience table;
 see [training stats](docs/training-stats.md). Crystal and Emerald now include
-a [Hidden Power type/base-power row](docs/hidden-power.md). Its Crystal Mac acceptance passed. English Red/Blue (Gambatte) and Emerald (mGBA)
+a [Hidden Power type/base-power row](docs/hidden-power.md). The DV/stat-experience
+table passed Crystal Mac acceptance; the Hidden Power row awaits an interactive
+check. English Red/Blue (Gambatte) and Emerald (mGBA)
 now have generation-specific training tables; interactive acceptance is pending.
 Type icons and FIGHT hints remain Crystal-only.
 See [move-effectiveness rules and symbols](docs/move-effectiveness.md).
